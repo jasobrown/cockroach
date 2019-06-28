@@ -420,6 +420,8 @@ func (cfg *Config) CreateEngines(ctx context.Context) (Engines, error) {
 	var details []string
 
 	details = append(details, fmt.Sprintf("RocksDB cache size: %s", humanizeutil.IBytes(cfg.CacheSize)))
+
+	// TODO(jeb): not sure how/if i can kill this, or if i even really need to
 	cache := engine.NewRocksDBCache(cfg.CacheSize)
 	defer cache.Release()
 
@@ -456,6 +458,18 @@ func (cfg *Config) CreateEngines(ctx context.Context) (Engines, error) {
 			details = append(details, fmt.Sprintf("store %d: in-memory, size %s",
 				i, humanizeutil.IBytes(sizeInBytes)))
 			engines = append(engines, engine.NewInMem(spec.Attributes, sizeInBytes))
+		} else if spec.EngineType == base.PMEM {
+			//TODO(jeb): insert your shit here ....
+			details = append(details, fmt.Sprintf("store %d: PersistentMemory, max size %s",
+				i, humanizeutil.IBytes(sizeInBytes)))
+			pmemConfig := engine.PMemConfig {
+
+			}
+			eng, err := engine.NewPersistentMemoryEngine(pmemConfig)
+			if err != nil {
+				return Engines{}, err
+			}
+			engines = append(engines, eng)
 		} else {
 			if spec.Size.Percent > 0 {
 				fileSystemUsage := gosigar.FileSystemUsage{}

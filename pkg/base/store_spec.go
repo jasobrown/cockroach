@@ -157,6 +157,12 @@ func (ss *SizeSpec) Set(value string) error {
 	return nil
 }
 
+type PersistentEngineType int64
+const (
+	ROCKSDB PersistentEngineType = iota
+	PMEM
+)
+
 // StoreSpec contains the details that can be specified in the cli pertaining
 // to the --store flag.
 type StoreSpec struct {
@@ -173,6 +179,7 @@ type StoreSpec struct {
 	// ExtraOptions is a serialized protobuf set by Go CCL code and passed through
 	// to C CCL code.
 	ExtraOptions []byte
+	EngineType PersistentEngineType
 }
 
 // String returns a fully parsable version of the store spec.
@@ -312,6 +319,10 @@ func NewStoreSpec(value string) (StoreSpec, error) {
 			}
 		case "rocksdb":
 			ss.RocksDBOptions = value
+			ss.EngineType = ROCKSDB
+		case "pmem":
+			ss.RocksDBOptions = value
+			ss.EngineType = PMEM
 		default:
 			return StoreSpec{}, fmt.Errorf("%s is not a valid store field", field)
 		}
