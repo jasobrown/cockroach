@@ -411,6 +411,7 @@ SNAPPY_SRC_DIR   := $(C_DEPS_DIR)/snappy
 LIBROACH_SRC_DIR := $(C_DEPS_DIR)/libroach
 KRB5_SRC_DIR     := $(C_DEPS_DIR)/krb5
 LIBPMEMROACH_SRC_DIR := $(C_DEPS_DIR)/libpmemroach
+PMDK_SRC_DIR     := $(C_DEPS_DIR)/pmdk
 
 # Derived build variants.
 use-stdmalloc          := $(findstring stdmalloc,$(TAGS))
@@ -441,6 +442,7 @@ KRB5_DIR     := $(BUILD_DIR)/krb5$(if $(use-msan),_msan)
 PROTOC_DIR := $(GOPATH)/native/$(HOST_TRIPLE)/protobuf
 
 LIBPMEMROACH_DIR := $(BUILD_DIR)/libpmemroach$(if $(use-msan),_msan)
+PMDK_DIR := $(BUILD_DIR)/pmdk$(if $(use-msan),_msan)
 
 LIBCRYPTOPP := $(CRYPTOPP_DIR)/libcryptopp.a
 LIBJEMALLOC := $(JEMALLOC_DIR)/lib/libjemalloc.a
@@ -452,10 +454,12 @@ LIBROACHCCL := $(LIBROACH_DIR)/libroachccl.a
 LIBKRB5     := $(KRB5_DIR)/lib/libgssapi_krb5.a
 PROTOC 		 := $(PROTOC_DIR)/protoc
 LIBPMEMROACH := $(LIBPMEMROACH_DIR)/libpmemroach.a
+# TODO(jeb) will have to figure out how to add multiple .a files, need libpmem.a
+LIBPMDK     := $(PMDK_DIR)/libpmemobj.a
 
 C_LIBS_COMMON = $(if $(use-stdmalloc),,$(LIBJEMALLOC)) $(LIBPROTOBUF) $(LIBSNAPPY) $(LIBROCKSDB)
-C_LIBS_OSS = $(C_LIBS_COMMON) $(LIBROACH) $(LIBPMEMROACH)
-C_LIBS_CCL = $(C_LIBS_COMMON) $(LIBCRYPTOPP) $(LIBROACHCCL) $(LIBPMEMROACH)
+C_LIBS_OSS = $(C_LIBS_COMMON) $(LIBROACH) $(LIBPMEMROACH) $(LIBPMDK)
+C_LIBS_CCL = $(C_LIBS_COMMON) $(LIBCRYPTOPP) $(LIBROACHCCL) $(LIBPMEMROACH) $(LIBPMDK)
 
 # We only include krb5 on linux, non-musl builds.
 ifeq "$(findstring linux-gnu,$(TARGET_TRIPLE))" "linux-gnu"
@@ -501,7 +505,7 @@ $(CGO_FLAGS_FILES): Makefile
 	@echo 'package $(notdir $(@D))' >> $@
 	@echo >> $@
 	@echo '// #cgo CPPFLAGS: $(addprefix -I,$(JEMALLOC_DIR)/include $(KRB_CPPFLAGS))' >> $@
-	@echo '// #cgo LDFLAGS: $(addprefix -L,$(CRYPTOPP_DIR) $(PROTOBUF_DIR) $(JEMALLOC_DIR)/lib $(SNAPPY_DIR) $(ROCKSDB_DIR) $(LIBROACH_DIR) $(KRB_DIR)) $(LIBPMEMROACH)' >> $@
+	@echo '// #cgo LDFLAGS: $(addprefix -L,$(CRYPTOPP_DIR) $(PROTOBUF_DIR) $(JEMALLOC_DIR)/lib $(SNAPPY_DIR) $(ROCKSDB_DIR) $(LIBROACH_DIR) $(KRB_DIR)) $(LIBPMEMROACH_DIR) $(LIBPMDK_LIB)' >> $@
 	@echo 'import "C"' >> $@
 
 # BUILD ARTIFACT CACHING
@@ -618,6 +622,12 @@ $(LIBROACH_DIR)/Makefile: $(C_DEPS_DIR)/libroach-rebuild | bin/.submodules-initi
 		-DJEMALLOC_LIB=$(LIBJEMALLOC) -DSNAPPY_LIB=$(LIBSNAPPY) \
 		-DCRYPTOPP_LIB=$(LIBCRYPTOPP)
 
+$(PMDK_DIR)/Makefile: $(C_DEPS_DIR)/pmdk-rebuild | bin/.submodules-initialized
+	rm -rf $(PMDK_DIR)
+	@# NOTE: If you change the CMake flags below, bump the version in
+	@# $(C_DEPS_DIR)/pmdk-rebuild. See above for rationale.
+	cd $(PMDK_SRC_DIR) && make source DESTDIR=$(BUILD_DIR)
+
 $(LIBPMEMROACH_DIR)/Makefile: $(C_DEPS_DIR)/libpmemroach-rebuild | bin/.submodules-initialized
 	rm -rf $(LIBPMEMROACH_DIR)
 	mkdir -p $(LIBPMEMROACH_DIR)
@@ -682,6 +692,9 @@ $(LIBROACH): $(LIBROACH_DIR)/Makefile bin/uptodate .ALWAYS_REBUILD
 $(LIBROACHCCL): $(LIBROACH_DIR)/Makefile bin/uptodate .ALWAYS_REBUILD
 	@uptodate $@ $(libroach-inputs) || $(MAKE) --no-print-directory -C $(LIBROACH_DIR) roachccl
 
+$(LIBPMDK): $(BUILD_DIR)/pmdk/Makefile bin/uptodate .ALWAYS_REBUILD
+	@uptodate $@ $(PMDK_SRC_DIR) || $(MAKE) --no-print-directory -C $(PMDK_DIR) SRCVERSION=$(PMDK_DIR)/.version
+
 # //TODO(jeb) need to add pmdk headers in the future
 libpmemroach-inputs := $(LIBPMEMROACH_SRC_DIR) $(PROTOBUF_SRC_DIR)/src
 
@@ -692,7 +705,7 @@ $(LIBKRB5): $(KRB5_DIR)/Makefile bin/uptodate .ALWAYS_REBUILD
 	@uptodate $@ $(KRB5_SRC_DIR)/src || $(MAKE) --no-print-directory -C $(KRB5_DIR)
 
 # Convenient names for maintainers. Not used by other targets in the Makefile.
-.PHONY: protoc libcryptopp libjemalloc libprotobuf libsnappy librocksdb libroach libroachccl libkrb5 libpmemroach
+.PHONY: protoc libcryptopp libjemalloc libprotobuf libsnappy librocksdb libroach libroachccl libkrb5 libpmemroach libpmdk
 protoc:      $(PROTOC)
 libcryptopp: $(LIBCRYPTOPP)
 libjemalloc: $(LIBJEMALLOC)
@@ -703,6 +716,7 @@ libroach:    $(LIBROACH)
 libroachccl: $(LIBROACHCCL)
 libkrb5:     $(LIBKRB5)
 libpmemroach: $(LIBPMEMROACH)
+libpmdk:     $(LIBPMDK)
 
 PHONY: check-libroach
 check-libroach: ## Run libroach tests.
@@ -1473,6 +1487,7 @@ clean-c-deps:
 	rm -rf $(LIBROACH_DIR)
 	rm -rf $(KRB5_DIR)
 	rm -rf $(LIBPMEMROACH_DIR)
+	rm -rf $(PMDK_DIR)
 
 .PHONY: unsafe-clean-c-deps
 unsafe-clean-c-deps:
@@ -1483,7 +1498,7 @@ unsafe-clean-c-deps:
 	git -C $(SNAPPY_SRC_DIR)   clean -dxf
 	git -C $(LIBROACH_SRC_DIR) clean -dxf
 	git -C $(KRB5_SRC_DIR)     clean -dxf
-	git -C $(LIBPMEMROACH_SRC_DIR) clean -dxf
+	git -C $(PMDK_SRC_DIR) clean -dxf
 
 .PHONY: clean-execgen-files
 clean-execgen-files:
