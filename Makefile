@@ -451,11 +451,11 @@ LIBROACH    := $(LIBROACH_DIR)/libroach.a
 LIBROACHCCL := $(LIBROACH_DIR)/libroachccl.a
 LIBKRB5     := $(KRB5_DIR)/lib/libgssapi_krb5.a
 PROTOC 		 := $(PROTOC_DIR)/protoc
-LIBPMEMROACH := $(LIBROACH_DIR)/libpmemroach.a
+LIBPMEMROACH := $(LIBPMEMROACH_DIR)/libpmemroach.a
 
 C_LIBS_COMMON = $(if $(use-stdmalloc),,$(LIBJEMALLOC)) $(LIBPROTOBUF) $(LIBSNAPPY) $(LIBROCKSDB)
 C_LIBS_OSS = $(C_LIBS_COMMON) $(LIBROACH) $(LIBPMEMROACH)
-C_LIBS_CCL = $(C_LIBS_COMMON) $(LIBCRYPTOPP) $(LIBROACHCCL)
+C_LIBS_CCL = $(C_LIBS_COMMON) $(LIBCRYPTOPP) $(LIBROACHCCL) $(LIBPMEMROACH)
 
 # We only include krb5 on linux, non-musl builds.
 ifeq "$(findstring linux-gnu,$(TARGET_TRIPLE))" "linux-gnu"

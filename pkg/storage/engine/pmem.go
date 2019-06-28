@@ -43,14 +43,14 @@ import (
 
 // TODO(tamird): why does rocksdb not link jemalloc,snappy statically?
 
-// #cgo CPPFLAGS: -I../../../c-deps/libroach/include
+// #cgo CPPFLAGS: -I../../../c-deps/libpmemroach/include
 // #cgo LDFLAGS: -lroachpmem
 // #cgo LDFLAGS: -lprotobuf
 // #cgo LDFLAGS: -lrocksdb
 // #cgo linux LDFLAGS: -lrt -lpthread
 //
 // #include <stdlib.h>
-// #include <libroachpmem.h>
+// #include <libpmemroach.h>
 import "C"
 
 
