@@ -26,3 +26,6 @@
 [submodule "c-deps/krb5"]
 	path = c-deps/krb5
 	url = https://github.com/cockroachdb/krb5.git
+[submodule "c-deps/pmdk"]
+	path = c-deps/pmdk
+	url = https://github.com/pmem/pmdk.git
