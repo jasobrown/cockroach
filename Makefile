@@ -505,7 +505,9 @@ $(CGO_FLAGS_FILES): Makefile
 	@echo 'package $(notdir $(@D))' >> $@
 	@echo >> $@
 	@echo '// #cgo CPPFLAGS: $(addprefix -I,$(JEMALLOC_DIR)/include $(KRB_CPPFLAGS))' >> $@
-	@echo '// #cgo LDFLAGS: $(addprefix -L,$(CRYPTOPP_DIR) $(PROTOBUF_DIR) $(JEMALLOC_DIR)/lib $(SNAPPY_DIR) $(ROCKSDB_DIR) $(LIBROACH_DIR) $(KRB_DIR)) $(LIBPMEMROACH_DIR) $(LIBPMDK_LIB)' >> $@
+	# TODO(jeb): restore pmemroach when it actually compiles
+	@echo '// #cgo LDFLAGS: $(addprefix -L,$(CRYPTOPP_DIR) $(PROTOBUF_DIR) $(JEMALLOC_DIR)/lib $(SNAPPY_DIR) $(ROCKSDB_DIR) $(LIBROACH_DIR) $(KRB_DIR)) $(LIBPMDK_LIB)' >> $@
+#	@echo '// #cgo LDFLAGS: $(addprefix -L,$(CRYPTOPP_DIR) $(PROTOBUF_DIR) $(JEMALLOC_DIR)/lib $(SNAPPY_DIR) $(ROCKSDB_DIR) $(LIBROACH_DIR) $(KRB_DIR)) $(LIBPMEMROACH_DIR) $(LIBPMDK_LIB)' >> $@
 	@echo 'import "C"' >> $@
 
 # BUILD ARTIFACT CACHING
@@ -699,7 +701,8 @@ $(LIBPMDK): $(BUILD_DIR)/pmdk/Makefile bin/uptodate .ALWAYS_REBUILD
 libpmemroach-inputs := $(LIBPMEMROACH_SRC_DIR) $(PROTOBUF_SRC_DIR)/src
 
 $(LIBPMEMROACH): $(LIBPMEMROACH_DIR)/Makefile bin/uptodate .ALWAYS_REBUILD
-	@uptodate $@ $(libpmemroach-inputs) || $(MAKE) --no-print-directory -C $(LIBPMEMROACH_DIR) pmemroach
+	$(info skipping build of libpmemroach, for now)
+#	@uptodate $@ $(libpmemroach-inputs) || $(MAKE) --no-print-directory -C $(LIBPMEMROACH_DIR) pmemroach
 
 $(LIBKRB5): $(KRB5_DIR)/Makefile bin/uptodate .ALWAYS_REBUILD
 	@uptodate $@ $(KRB5_SRC_DIR)/src || $(MAKE) --no-print-directory -C $(KRB5_DIR)
