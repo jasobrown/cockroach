@@ -22,12 +22,12 @@ namespace cockroach {
 static const int kDefaultVerbosityForInfoLogging = 3;
 
 // Make a new rocksdb::Logger that calls back into Go with a translation of
-// RocksDB's log level into a corresponding Go log level.
+// RocksPmem's log level into a corresponding Go log level.
 // The message is logged if severity is higher than info, or if severity is
 // info and glog verbosity is at least `info_verbosity`.
-rocksdb::Logger* NewDBLogger(int info_verbosity);
+rocksdb::Logger* NewPmemLogger(int info_verbosity);
 
-// DBMakeOptions constructs a rocksdb::Options given a DBOptions.
-rocksdb::Options DBMakeOptions(DBOptions db_opts);
+// PmemMakeOptions constructs a rocksdb::Options given a PmemOptions.
+rocksdb::Options PmemMakeOptions(PmemOptions db_opts);
 
 }  // namespace cockroach

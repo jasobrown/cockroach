@@ -22,87 +22,87 @@
 #include <rocksdb/statistics.h>
 #include "eventlistener.h"
 
-struct DBEngine {
-  rocksdb::DB* const rep;
+struct PmemEngine {
+  rocksdb::Pmem* const rep;
   std::atomic<int64_t>* iters;
 
-  DBEngine(rocksdb::DB* r, std::atomic<int64_t>* iters) : rep(r), iters(iters) {}
-  virtual ~DBEngine();
+  PmemEngine(rocksdb::Pmem* r, std::atomic<int64_t>* iters) : rep(r), iters(iters) {}
+  virtual ~PmemEngine();
 
-  virtual DBStatus AssertPreClose();
-  virtual DBStatus Put(DBKey key, DBSlice value) = 0;
-  virtual DBStatus Merge(DBKey key, DBSlice value) = 0;
-  virtual DBStatus Delete(DBKey key) = 0;
-  virtual DBStatus SingleDelete(DBKey key) = 0;
-  virtual DBStatus DeleteRange(DBKey start, DBKey end) = 0;
-  virtual DBStatus CommitBatch(bool sync) = 0;
-  virtual DBStatus ApplyBatchRepr(DBSlice repr, bool sync) = 0;
-  virtual DBSlice BatchRepr() = 0;
-  virtual DBStatus Get(DBKey key, DBString* value) = 0;
-  virtual DBIterator* NewIter(DBIterOptions) = 0;
-  virtual DBStatus GetStats(DBStatsResult* stats) = 0;
-  virtual DBStatus GetTickersAndHistograms(DBTickersAndHistogramsResult* stats) = 0;
-  virtual DBString GetCompactionStats() = 0;
-  virtual DBString GetEnvStats(DBEnvStatsResult* stats) = 0;
-  virtual DBStatus GetEncryptionRegistries(DBEncryptionRegistries* result) = 0;
-  virtual DBStatus EnvWriteFile(DBSlice path, DBSlice contents) = 0;
-  virtual DBStatus EnvOpenFile(DBSlice path, rocksdb::WritableFile** file) = 0;
-  virtual DBStatus EnvReadFile(DBSlice path, DBSlice* contents) = 0;
-  virtual DBStatus EnvAppendFile(rocksdb::WritableFile* file, DBSlice contents) = 0;
-  virtual DBStatus EnvSyncFile(rocksdb::WritableFile* file) = 0;
-  virtual DBStatus EnvCloseFile(rocksdb::WritableFile* file) = 0;
-  virtual DBStatus EnvDeleteFile(DBSlice path) = 0;
-  virtual DBStatus EnvDeleteDirAndFiles(DBSlice dir) = 0;
-  virtual DBStatus EnvLinkFile(DBSlice oldname, DBSlice newname) = 0;
+  virtual PmemStatus AssertPreClose();
+  virtual PmemStatus Put(PmemKey key, PmemSlice value) = 0;
+  virtual PmemStatus Merge(PmemKey key, PmemSlice value) = 0;
+  virtual PmemStatus Delete(PmemKey key) = 0;
+  virtual PmemStatus SingleDelete(PmemKey key) = 0;
+  virtual PmemStatus DeleteRange(PmemKey start, PmemKey end) = 0;
+  virtual PmemStatus CommitBatch(bool sync) = 0;
+  virtual PmemStatus ApplyBatchRepr(PmemSlice repr, bool sync) = 0;
+  virtual PmemSlice BatchRepr() = 0;
+  virtual PmemStatus Get(PmemKey key, PmemString* value) = 0;
+  virtual PmemIterator* NewIter(PmemIterOptions) = 0;
+  virtual PmemStatus GetStats(PmemStatsResult* stats) = 0;
+  virtual PmemStatus GetTickersAndHistograms(PmemTickersAndHistogramsResult* stats) = 0;
+  virtual PmemString GetCompactionStats() = 0;
+  virtual PmemString GetEnvStats(PmemEnvStatsResult* stats) = 0;
+  virtual PmemStatus GetEncryptionRegistries(PmemEncryptionRegistries* result) = 0;
+  virtual PmemStatus EnvWriteFile(PmemSlice path, PmemSlice contents) = 0;
+  virtual PmemStatus EnvOpenFile(PmemSlice path, rocksdb::WritableFile** file) = 0;
+  virtual PmemStatus EnvReadFile(PmemSlice path, PmemSlice* contents) = 0;
+  virtual PmemStatus EnvAppendFile(rocksdb::WritableFile* file, PmemSlice contents) = 0;
+  virtual PmemStatus EnvSyncFile(rocksdb::WritableFile* file) = 0;
+  virtual PmemStatus EnvCloseFile(rocksdb::WritableFile* file) = 0;
+  virtual PmemStatus EnvDeleteFile(PmemSlice path) = 0;
+  virtual PmemStatus EnvDeleteDirAndFiles(PmemSlice dir) = 0;
+  virtual PmemStatus EnvLinkFile(PmemSlice oldname, PmemSlice newname) = 0;
 
-  DBSSTable* GetSSTables(int* n);
-  DBStatus GetSortedWALFiles(DBWALFile** out_files, int* n);
-  DBString GetUserProperties();
+  PmemSSTable* GetSSTables(int* n);
+  PmemStatus GetSortedWALFiles(PmemWALFile** out_files, int* n);
+  PmemString GetUserProperties();
 };
 
 namespace cockroach {
 
 struct EnvManager;
 
-struct DBImpl : public DBEngine {
+struct PmemImpl : public PmemEngine {
   std::unique_ptr<EnvManager> env_mgr;
-  std::unique_ptr<rocksdb::DB> rep_deleter;
+  std::unique_ptr<rocksdb::Pmem> rep_deleter;
   std::shared_ptr<rocksdb::Cache> block_cache;
-  std::shared_ptr<DBEventListener> event_listener;
+  std::shared_ptr<PmemEventListener> event_listener;
   std::atomic<int64_t> iters_count;
 
-  // Construct a new DBImpl from the specified DB.
-  // The DB and passed Envs will be deleted when the DBImpl is deleted.
+  // Construct a new PmemImpl from the specified Pmem.
+  // The Pmem and passed Envs will be deleted when the PmemImpl is deleted.
   // Either env can be NULL.
-  DBImpl(rocksdb::DB* r, std::unique_ptr<EnvManager> e, std::shared_ptr<rocksdb::Cache> bc,
-         std::shared_ptr<DBEventListener> event_listener);
-  virtual ~DBImpl();
+  PmemImpl(rocksdb::Pmem* r, std::unique_ptr<EnvManager> e, std::shared_ptr<rocksdb::Cache> bc,
+         std::shared_ptr<PmemEventListener> event_listener);
+  virtual ~PmemImpl();
 
-  virtual DBStatus AssertPreClose();
-  virtual DBStatus Put(DBKey key, DBSlice value);
-  virtual DBStatus Merge(DBKey key, DBSlice value);
-  virtual DBStatus Delete(DBKey key);
-  virtual DBStatus SingleDelete(DBKey key);
-  virtual DBStatus DeleteRange(DBKey start, DBKey end);
-  virtual DBStatus CommitBatch(bool sync);
-  virtual DBStatus ApplyBatchRepr(DBSlice repr, bool sync);
-  virtual DBSlice BatchRepr();
-  virtual DBStatus Get(DBKey key, DBString* value);
-  virtual DBIterator* NewIter(DBIterOptions);
-  virtual DBStatus GetStats(DBStatsResult* stats);
-  virtual DBStatus GetTickersAndHistograms(DBTickersAndHistogramsResult* stats);
-  virtual DBString GetCompactionStats();
-  virtual DBStatus GetEnvStats(DBEnvStatsResult* stats);
-  virtual DBStatus GetEncryptionRegistries(DBEncryptionRegistries* result);
-  virtual DBStatus EnvWriteFile(DBSlice path, DBSlice contents);
-  virtual DBStatus EnvOpenFile(DBSlice path, rocksdb::WritableFile** file);
-  virtual DBStatus EnvReadFile(DBSlice path, DBSlice* contents);
-  virtual DBStatus EnvAppendFile(rocksdb::WritableFile* file, DBSlice contents);
-  virtual DBStatus EnvSyncFile(rocksdb::WritableFile* file);
-  virtual DBStatus EnvCloseFile(rocksdb::WritableFile* file);
-  virtual DBStatus EnvDeleteFile(DBSlice path);
-  virtual DBStatus EnvDeleteDirAndFiles(DBSlice dir);
-  virtual DBStatus EnvLinkFile(DBSlice oldname, DBSlice newname);
+  virtual PmemStatus AssertPreClose();
+  virtual PmemStatus Put(PmemKey key, PmemSlice value);
+  virtual PmemStatus Merge(PmemKey key, PmemSlice value);
+  virtual PmemStatus Delete(PmemKey key);
+  virtual PmemStatus SingleDelete(PmemKey key);
+  virtual PmemStatus DeleteRange(PmemKey start, PmemKey end);
+  virtual PmemStatus CommitBatch(bool sync);
+  virtual PmemStatus ApplyBatchRepr(PmemSlice repr, bool sync);
+  virtual PmemSlice BatchRepr();
+  virtual PmemStatus Get(PmemKey key, PmemString* value);
+  virtual PmemIterator* NewIter(PmemIterOptions);
+  virtual PmemStatus GetStats(PmemStatsResult* stats);
+  virtual PmemStatus GetTickersAndHistograms(PmemTickersAndHistogramsResult* stats);
+  virtual PmemString GetCompactionStats();
+  virtual PmemStatus GetEnvStats(PmemEnvStatsResult* stats);
+  virtual PmemStatus GetEncryptionRegistries(PmemEncryptionRegistries* result);
+  virtual PmemStatus EnvWriteFile(PmemSlice path, PmemSlice contents);
+  virtual PmemStatus EnvOpenFile(PmemSlice path, rocksdb::WritableFile** file);
+  virtual PmemStatus EnvReadFile(PmemSlice path, PmemSlice* contents);
+  virtual PmemStatus EnvAppendFile(rocksdb::WritableFile* file, PmemSlice contents);
+  virtual PmemStatus EnvSyncFile(rocksdb::WritableFile* file);
+  virtual PmemStatus EnvCloseFile(rocksdb::WritableFile* file);
+  virtual PmemStatus EnvDeleteFile(PmemSlice path);
+  virtual PmemStatus EnvDeleteDirAndFiles(PmemSlice dir);
+  virtual PmemStatus EnvLinkFile(PmemSlice oldname, PmemSlice newname);
 };
 
 }  // namespace cockroach

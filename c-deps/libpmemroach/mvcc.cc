@@ -66,8 +66,8 @@ inline int64_t age_factor(int64_t fromNS, int64_t toNS) {
 // should be taken as a hint but determined by the max timestamp encountered.
 //
 // This implementation must match engine.ComputeStatsGo.
-MVCCStatsResult MVCCComputeStatsInternal(::rocksdb::Iterator* const iter_rep, DBKey start,
-                                         DBKey end, int64_t now_nanos) {
+MVCCStatsResult MVCCComputeStatsInternal(::rocksdb::Iterator* const iter_rep, PmemKey start,
+                                         PmemKey end, int64_t now_nanos) {
   MVCCStatsResult stats;
   memset(&stats, 0, sizeof(stats));
 
@@ -211,14 +211,14 @@ MVCCStatsResult MVCCComputeStatsInternal(::rocksdb::Iterator* const iter_rep, DB
 
 }  // namespace cockroach
 
-MVCCStatsResult MVCCComputeStats(DBIterator* iter, DBKey start, DBKey end, int64_t now_nanos) {
+MVCCStatsResult MVCCComputeStats(PmemIterator* iter, PmemKey start, PmemKey end, int64_t now_nanos) {
   return MVCCComputeStatsInternal(iter->rep.get(), start, end, now_nanos);
 }
 
-bool MVCCIsValidSplitKey(DBSlice key) { return IsValidSplitKey(ToSlice(key)); }
+bool MVCCIsValidSplitKey(PmemSlice key) { return IsValidSplitKey(ToSlice(key)); }
 
-DBStatus MVCCFindSplitKey(DBIterator* iter, DBKey start, DBKey end, DBKey min_split,
-                          int64_t target_size, DBString* split_key) {
+PmemStatus MVCCFindSplitKey(PmemIterator* iter, PmemKey start, PmemKey end, PmemKey min_split,
+                          int64_t target_size, PmemString* split_key) {
   auto iter_rep = iter->rep.get();
   const std::string start_key = EncodeKey(start);
   iter_rep->Seek(start_key);
@@ -269,24 +269,24 @@ DBStatus MVCCFindSplitKey(DBIterator* iter, DBKey start, DBKey end, DBKey min_sp
   if (best_split_key == start_key) {
     return kSuccess;
   }
-  *split_key = ToDBString(best_split_key);
+  *split_key = ToPmemString(best_split_key);
   return kSuccess;
 }
 
-DBScanResults MVCCGet(DBIterator* iter, DBSlice key, DBTimestamp timestamp, DBTxn txn,
+PmemScanResults MVCCGet(PmemIterator* iter, PmemSlice key, PmemTimestamp timestamp, PmemTxn txn,
                       bool inconsistent, bool tombstones, bool ignore_sequence) {
   // Get is implemented as a scan where we retrieve a single key. We specify an
   // empty key for the end key which will ensure we don't retrieve a key
   // different than the start key. This is a bit of a hack.
-  const DBSlice end = {0, 0};
+  const PmemSlice end = {0, 0};
   ScopedStats scoped_iter(iter);
   mvccForwardScanner scanner(iter, key, end, timestamp, 1 /* max_keys */, txn, inconsistent,
                              tombstones, ignore_sequence);
   return scanner.get();
 }
 
-DBScanResults MVCCScan(DBIterator* iter, DBSlice start, DBSlice end, DBTimestamp timestamp,
-                       int64_t max_keys, DBTxn txn, bool inconsistent, bool reverse,
+PmemScanResults MVCCScan(PmemIterator* iter, PmemSlice start, PmemSlice end, PmemTimestamp timestamp,
+                       int64_t max_keys, PmemTxn txn, bool inconsistent, bool reverse,
                        bool tombstones, bool ignore_sequence) {
   ScopedStats scoped_iter(iter);
   if (reverse) {

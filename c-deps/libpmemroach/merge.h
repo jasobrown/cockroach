@@ -25,7 +25,7 @@ namespace cockroach {
 WARN_UNUSED_RESULT bool MergeValues(cockroach::storage::engine::enginepb::MVCCMetadata* left,
                                     const cockroach::storage::engine::enginepb::MVCCMetadata& right,
                                     bool full_merge, rocksdb::Logger* logger);
-DBStatus MergeResult(cockroach::storage::engine::enginepb::MVCCMetadata* meta, DBString* result);
+PmemStatus MergeResult(cockroach::storage::engine::enginepb::MVCCMetadata* meta, PmemString* result);
 rocksdb::MergeOperator* NewMergeOperator();
 void sortAndDeduplicateColumns(roachpb::InternalTimeSeriesData* data, int first_unsorted);
 void convertToColumnar(roachpb::InternalTimeSeriesData* data);

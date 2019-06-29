@@ -29,9 +29,9 @@ namespace cockroach {
 
 namespace {
 
-class DBPrefixExtractor : public rocksdb::SliceTransform {
+class PmemPrefixExtractor : public rocksdb::SliceTransform {
  public:
-  DBPrefixExtractor() {}
+  PmemPrefixExtractor() {}
 
   virtual const char* Name() const { return "cockroach_prefix_extractor"; }
 
@@ -45,10 +45,10 @@ class DBPrefixExtractor : public rocksdb::SliceTransform {
   virtual bool InDomain(const rocksdb::Slice& src) const { return true; }
 };
 
-// The DBLogger is a rocksdb::Logger that calls back into Go code for formatted logging.
-class DBLogger : public rocksdb::Logger {
+// The PmemLogger is a rocksdb::Logger that calls back into Go code for formatted logging.
+class PmemLogger : public rocksdb::Logger {
  public:
-  DBLogger(int info_verbosity) : info_verbosity_(info_verbosity) {}
+  PmemLogger(int info_verbosity) : info_verbosity_(info_verbosity) {}
 
   virtual void Logv(const rocksdb::InfoLogLevel log_level, const char* format,
                     va_list ap) override {
@@ -78,7 +78,7 @@ class DBLogger : public rocksdb::Logger {
         assert(false);
         return;
     }
-    if (!rocksDBV(go_log_level, info_verbosity_)) {
+    if (!rocksPmemV(go_log_level, info_verbosity_)) {
       return;
     }
 
@@ -94,7 +94,7 @@ class DBLogger : public rocksdb::Logger {
     va_end(backup_ap);
 
     if ((result >= 0) && (result < sizeof(space))) {
-      rocksDBLog(go_log_level, space, result);
+      rocksPmemLog(go_log_level, space, result);
       return;
     }
 
@@ -117,7 +117,7 @@ class DBLogger : public rocksdb::Logger {
 
       if ((result >= 0) && (result < length)) {
         // It fit
-        rocksDBLog(go_log_level, buf, result);
+        rocksPmemLog(go_log_level, buf, result);
         delete[] buf;
         return;
       }
@@ -126,10 +126,10 @@ class DBLogger : public rocksdb::Logger {
   }
 
   virtual void Logv(const char* format, va_list ap) override {
-    // The RocksDB API tries to force us to separate the severity check (above function)
+    // The RocksPmem API tries to force us to separate the severity check (above function)
     // from the actual logging (this function) by making this function pure virtual.
     // However, when calling into Go, we need to provide severity level to both the severity
-    // level check function (`rocksDBV`) and the actual logging function (`rocksDBLog`). So,
+    // level check function (`rocksPmemV`) and the actual logging function (`rocksPmemLog`). So,
     // we do all the work in the function that has severity level and then expect this
     // function to never be called.
     assert(false);
@@ -141,9 +141,9 @@ class DBLogger : public rocksdb::Logger {
 
 }  // namespace
 
-rocksdb::Logger* NewDBLogger(int info_verbosity) { return new DBLogger(info_verbosity); }
+rocksdb::Logger* NewPmemLogger(int info_verbosity) { return new PmemLogger(info_verbosity); }
 
-rocksdb::Options DBMakeOptions(DBOptions db_opts) {
+rocksdb::Options PmemMakeOptions(PmemOptions db_opts) {
   // Use the rocksdb options builder to configure the base options
   // using our memtable budget.
   rocksdb::Options options;
@@ -157,10 +157,10 @@ rocksdb::Options DBMakeOptions(DBOptions db_opts) {
   options.max_subcompactions = 1;
   options.comparator = &kComparator;
   options.create_if_missing = !db_opts.must_exist;
-  options.info_log.reset(NewDBLogger(kDefaultVerbosityForInfoLogging));
+  options.info_log.reset(NewPmemLogger(kDefaultVerbosityForInfoLogging));
   options.merge_operator.reset(NewMergeOperator());
-  options.prefix_extractor.reset(new DBPrefixExtractor);
-  options.statistics = rocksdb::CreateDBStatistics();
+  options.prefix_extractor.reset(new PmemPrefixExtractor);
+  options.statistics = rocksdb::CreatePmemStatistics();
   options.max_open_files = db_opts.max_open_files;
   options.compaction_pri = rocksdb::kMinOverlappingRatio;
   // Periodically sync both the WAL and SST writes to smooth out disk
@@ -170,7 +170,7 @@ rocksdb::Options DBMakeOptions(DBOptions db_opts) {
   options.bytes_per_sync = 512 << 10;      // 512 KB
 
   // The size reads should be performed in for compaction. The
-  // internets claim this can speed up compactions, though RocksDB
+  // internets claim this can speed up compactions, though RocksPmem
   // docs say it is only useful on spinning disks. Experimentally it
   // has had no effect.
   // options.compaction_readahead_size = 2 << 20;
@@ -194,11 +194,11 @@ rocksdb::Options DBMakeOptions(DBOptions db_opts) {
 
   // Use the TablePropertiesCollector hook to store the min and max MVCC
   // timestamps present in each sstable in the metadata for that sstable.
-  options.table_properties_collector_factories.emplace_back(DBMakeTimeBoundCollector());
+  options.table_properties_collector_factories.emplace_back(PmemMakeTimeBoundCollector());
 
   // Automatically request compactions whenever an SST contains too many range
   // deletions.
-  options.table_properties_collector_factories.emplace_back(DBMakeDeleteRangeCollector());
+  options.table_properties_collector_factories.emplace_back(PmemMakeDeleteRangeCollector());
 
   // The write buffer size is the size of the in memory structure that
   // will be flushed to create L0 files.
@@ -242,10 +242,10 @@ rocksdb::Options DBMakeOptions(DBOptions db_opts) {
   // any benefit so far.
   options.min_write_buffer_number_to_merge = 1;
   // Enable dynamic level sizing which reduces both size and write
-  // amplification. This causes RocksDB to pick the target size of
+  // amplification. This causes RocksPmem to pick the target size of
   // each level dynamically.
   options.level_compaction_dynamic_level_bytes = true;
-  // Follow the RocksDB recommendation to configure the size of L1 to
+  // Follow the RocksPmem recommendation to configure the size of L1 to
   // be the same as the estimated size of L0.
   options.max_bytes_for_level_base = 64 << 20;  // 64 MB
   options.max_bytes_for_level_multiplier = 10;
@@ -309,8 +309,8 @@ rocksdb::Options DBMakeOptions(DBOptions db_opts) {
 
   // Increasing block_size decreases memory usage at the cost of
   // increased read amplification. When reading a key-value pair from
-  // a table file, RocksDB loads an entire block into memory. The
-  // RocksDB default is 4KB. This sets it to 32KB.
+  // a table file, RocksPmem loads an entire block into memory. The
+  // RocksPmem default is 4KB. This sets it to 32KB.
   table_options.block_size = 32 << 10;
   // Disable whole_key_filtering which adds a bloom filter entry for
   // the "whole key", doubling the size of our bloom filters. This is

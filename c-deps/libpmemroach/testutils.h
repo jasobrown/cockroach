@@ -22,17 +22,17 @@
 
 namespace testutils {
 
-// Returns initialized DBOptions with reasonable values for unittests.
-inline DBOptions defaultDBOptions() {
-  return DBOptions{
+// Returns initialized PmemOptions with reasonable values for unittests.
+inline PmemOptions defaultPmemOptions() {
+  return PmemOptions{
       nullptr,    // cache
       2,          // num_cpu
       1024,       // max_open_files
       false,      // use_file_registry
       false,      // must_exist
       false,      // read_only
-      DBSlice(),  // rocksdb_options
-      DBSlice(),  // extra_options
+      PmemSlice(),  // rocksdb_options
+      PmemSlice(),  // extra_options
   };
 }
 

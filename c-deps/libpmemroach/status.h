@@ -19,25 +19,25 @@
 
 namespace cockroach {
 
-const DBStatus kSuccess = {NULL, 0};
+const PmemStatus kSuccess = {NULL, 0};
 
-// ToDBStatus converts a rocksdb Status to a DBStatus.
-inline DBStatus ToDBStatus(const rocksdb::Status& status) {
+// ToPmemStatus converts a rocksdb Status to a PmemStatus.
+inline PmemStatus ToPmemStatus(const rocksdb::Status& status) {
   if (status.ok()) {
     return kSuccess;
   }
-  return ToDBString(status.ToString());
+  return ToPmemString(status.ToString());
 }
 
-// FmtStatus formats the given arguments printf-style into a DBStatus.
-__attribute__((__format__(GOOGLE_PRINTF_FORMAT, 1, 2))) inline DBStatus
+// FmtStatus formats the given arguments printf-style into a PmemStatus.
+__attribute__((__format__(GOOGLE_PRINTF_FORMAT, 1, 2))) inline PmemStatus
 FmtStatus(const char* fmt_str, ...) {
   va_list ap;
   va_start(ap, fmt_str);
   std::string str;
   fmt::StringAppendV(&str, fmt_str, ap);
   va_end(ap);
-  return ToDBString(str);
+  return ToPmemString(str);
 }
 
 }  // namespace cockroach

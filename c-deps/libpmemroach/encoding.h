@@ -54,17 +54,17 @@ bool DecodeUvarint64(rocksdb::Slice* buf, uint64_t* value);
 const int kMVCCVersionTimestampSize = 12;
 
 void EncodeTimestamp(std::string& s, int64_t wall_time, int32_t logical);
-std::string EncodeTimestamp(DBTimestamp ts);
+std::string EncodeTimestamp(PmemTimestamp ts);
 
 // MVCC keys are encoded as <key>\x00[<wall_time>[<logical>]]<#timestamp-bytes>. A
-// custom RocksDB comparator (DBComparator) is used to maintain the desired
+// custom RocksPmem comparator (PmemComparator) is used to maintain the desired
 // ordering as these keys do not sort lexicographically correctly.
 std::string EncodeKey(const rocksdb::Slice& key, int64_t wall_time, int32_t logical);
 
 // MVCC keys are encoded as <key>\x00[<wall_time>[<logical>]]<#timestamp-bytes>. A
-// custom RocksDB comparator (DBComparator) is used to maintain the desired
+// custom RocksPmem comparator (PmemComparator) is used to maintain the desired
 // ordering as these keys do not sort lexicographically correctly.
-std::string EncodeKey(DBKey k);
+std::string EncodeKey(PmemKey k);
 
 // SplitKey splits an MVCC key into key and timestamp slices. See also
 // DecodeKey if you want to decode the timestamp. Returns true on
@@ -93,7 +93,7 @@ WARN_UNUSED_RESULT bool DecodeTimestamp(rocksdb::Slice buf,
 
 // EmptyTimestamp returns whether ts represents an empty timestamp where both
 // the wall_time and logical components are zero.
-bool EmptyTimestamp(DBTimestamp ts);
+bool EmptyTimestamp(PmemTimestamp ts);
 
 // DecodeKey splits an MVCC key into a key slice and decoded
 // timestamp. See also SplitKey if you want to do not need to decode
@@ -101,7 +101,7 @@ bool EmptyTimestamp(DBTimestamp ts);
 // error.
 WARN_UNUSED_RESULT bool DecodeKey(rocksdb::Slice buf, rocksdb::Slice* key, int64_t* wall_time,
                                   int32_t* logical);
-WARN_UNUSED_RESULT inline bool DecodeKey(rocksdb::Slice buf, rocksdb::Slice* key, DBTimestamp* ts) {
+WARN_UNUSED_RESULT inline bool DecodeKey(rocksdb::Slice buf, rocksdb::Slice* key, PmemTimestamp* ts) {
   return DecodeKey(buf, key, &ts->wall_time, &ts->logical);
 }
 

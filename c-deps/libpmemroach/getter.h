@@ -24,7 +24,7 @@ namespace cockroach {
 // iterator or an engine. It is used by ProcessDeltaKey to abstract
 // whether the "base" layer is an iterator or an engine.
 struct Getter {
-  virtual DBStatus Get(DBString* value) = 0;
+  virtual PmemStatus Get(PmemString* value) = 0;
 };
 
 // IteratorGetter is an implementation of the Getter interface which
@@ -36,20 +36,20 @@ struct IteratorGetter : public Getter {
 
   IteratorGetter(rocksdb::Iterator* iter) : base(iter) {}
 
-  virtual DBStatus Get(DBString* value);
+  virtual PmemStatus Get(PmemString* value);
 };
 
-// DBGetter is an implementation of the Getter interface which
-// retrieves the value for the supplied key from a rocksdb::DB.
-struct DBGetter : public Getter {
-  rocksdb::DB* const rep;
+// PmemGetter is an implementation of the Getter interface which
+// retrieves the value for the supplied key from a rocksdb::Pmem.
+struct PmemGetter : public Getter {
+  rocksdb::Pmem* const rep;
   rocksdb::ReadOptions const options;
   std::string const key;
 
-  DBGetter(rocksdb::DB* const r, rocksdb::ReadOptions opts, std::string&& k)
+  PmemGetter(rocksdb::Pmem* const r, rocksdb::ReadOptions opts, std::string&& k)
       : rep(r), options(opts), key(std::move(k)) {}
 
-  virtual DBStatus Get(DBString* value);
+  virtual PmemStatus Get(PmemString* value);
 };
 
 }  // namespace cockroach

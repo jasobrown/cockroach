@@ -24,10 +24,10 @@
 #include "fmt.h"
 
 extern "C" {
-// Tests are run in plain C++, we need a symbol for rocksDBLog, normally
+// Tests are run in plain C++, we need a symbol for rocksPmemLog, normally
 // implemented on the Go side.
-bool __attribute__((weak)) rocksDBV(int, int) { return false; }
-void __attribute__((weak)) rocksDBLog(int, char*, int) {}
+bool __attribute__((weak)) rocksPmemV(int, int) { return false; }
+void __attribute__((weak)) rocksPmemLog(int, char*, int) {}
 }  // extern "C"
 
 namespace testutils {

@@ -17,17 +17,17 @@
 
 namespace cockroach {
 
-DBStatus IteratorGetter::Get(DBString* value) {
+PmemStatus IteratorGetter::Get(PmemString* value) {
   if (base == NULL) {
     value->data = NULL;
     value->len = 0;
   } else {
-    *value = ToDBString(base->value());
+    *value = ToPmemString(base->value());
   }
   return kSuccess;
 }
 
-DBStatus DBGetter::Get(DBString* value) {
+PmemStatus PmemGetter::Get(PmemString* value) {
   std::string tmp;
   rocksdb::Status s = rep->Get(options, key, &tmp);
   if (!s.ok()) {
@@ -38,9 +38,9 @@ DBStatus DBGetter::Get(DBString* value) {
       value->len = 0;
       return kSuccess;
     }
-    return ToDBStatus(s);
+    return ToPmemStatus(s);
   }
-  *value = ToDBString(tmp);
+  *value = ToPmemString(tmp);
   return kSuccess;
 }
 

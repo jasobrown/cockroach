@@ -30,15 +30,15 @@ namespace {
 // is. "delta" should have been seeked to "key", but may not be pointing to
 // "key" if no updates existing for that key in the batch.
 //
-// Note that RocksDB WriteBatches append updates internally. WBWIIterator
+// Note that RocksPmem WriteBatches append updates internally. WBWIIterator
 // maintains an index for these updates on <key, seq-num>. Looping over the
 // entries in WBWIIterator will return the keys in sorted order and, for each
 // key, the updates as they were added to the batch.
 //
 // Upon return, the delta iterator will point to the next entry past key. The
 // delta iterator may not be valid if the end of iteration was reached.
-DBStatus ProcessDeltaKey(Getter* base, rocksdb::WBWIIterator* delta, rocksdb::Slice key,
-                         DBString* value) {
+PmemStatus ProcessDeltaKey(Getter* base, rocksdb::WBWIIterator* delta, rocksdb::Slice key,
+                         PmemString* value) {
   if (value->data != NULL) {
     free(value->data);
   }
@@ -53,14 +53,14 @@ DBStatus ProcessDeltaKey(Getter* base, rocksdb::WBWIIterator* delta, rocksdb::Sl
       if (value->data != NULL) {
         free(value->data);
       }
-      *value = ToDBString(entry.value);
+      *value = ToPmemString(entry.value);
       break;
     case rocksdb::kMergeRecord: {
-      DBString existing;
+      PmemString existing;
       if (count == 0) {
         // If this is the first record for the key, then we need to
         // merge with the record in base.
-        DBStatus status = base->Get(&existing);
+        PmemStatus status = base->Get(&existing);
         if (status.data != NULL) {
           if (value->data != NULL) {
             free(value->data);
@@ -76,13 +76,13 @@ DBStatus ProcessDeltaKey(Getter* base, rocksdb::WBWIIterator* delta, rocksdb::Sl
         value->len = 0;
       }
       if (existing.data != NULL) {
-        DBStatus status = DBMergeOne(ToDBSlice(existing), ToDBSlice(entry.value), value);
+        PmemStatus status = PmemMergeOne(ToPmemSlice(existing), ToPmemSlice(entry.value), value);
         free(existing.data);
         if (status.data != NULL) {
           return status;
         }
       } else {
-        *value = ToDBString(entry.value);
+        *value = ToPmemString(entry.value);
       }
       break;
     }
@@ -95,7 +95,7 @@ DBStatus ProcessDeltaKey(Getter* base, rocksdb::WBWIIterator* delta, rocksdb::Sl
       if (value->data != NULL) {
         free(value->data);
       }
-      // This mirrors the logic in DBGet(): a deleted entry is
+      // This mirrors the logic in PmemGet(): a deleted entry is
       // indicated by a value with NULL data.
       value->data = NULL;
       value->len = 0;
@@ -111,7 +111,7 @@ DBStatus ProcessDeltaKey(Getter* base, rocksdb::WBWIIterator* delta, rocksdb::Sl
   return base->Get(value);
 }
 
-// This was cribbed from RocksDB and modified to support merge
+// This was cribbed from RocksPmem and modified to support merge
 // records. A BaseDeltaIterator is an iterator which provides a merged
 // view of a base iterator and a delta where the delta iterator is
 // from a WriteBatchWithIndex.
@@ -253,7 +253,7 @@ class BaseDeltaIterator : public rocksdb::Iterator {
     // next mutation to the write batch. So keep a copy of the key
     // we're pointing at.
     delta_key_ = delta_iterator_->Entry().key.ToString();
-    DBStatus status = ProcessDeltaKey(&base, delta_iterator_.get(), delta_key_, &merged_);
+    PmemStatus status = ProcessDeltaKey(&base, delta_iterator_.get(), delta_key_, &merged_);
     if (status.data != NULL) {
       status_ = rocksdb::Status::Corruption("unable to merge records");
       free(status.data);
@@ -400,8 +400,8 @@ class BaseDeltaIterator : public rocksdb::Iterator {
   mutable rocksdb::Status status_;
   // The merged delta value returned when we're pointed at the delta
   // iterator.
-  mutable DBString merged_;
-  // The base iterator, presumably obtained from a rocksdb::DB.
+  mutable PmemString merged_;
+  // The base iterator, presumably obtained from a rocksdb::Pmem.
   std::unique_ptr<rocksdb::Iterator> base_iterator_;
   // The delta iterator obtained from a rocksdb::WriteBatchWithIndex.
   std::unique_ptr<rocksdb::WBWIIterator> delta_iterator_;
@@ -418,40 +418,40 @@ class BaseDeltaIterator : public rocksdb::Iterator {
   const rocksdb::Slice* upper_bound_;
 };
 
-class DBBatchInserter : public rocksdb::WriteBatch::Handler {
+class PmemBatchInserter : public rocksdb::WriteBatch::Handler {
  public:
-  DBBatchInserter(rocksdb::WriteBatchBase* batch) : batch_(batch) {}
+  PmemBatchInserter(rocksdb::WriteBatchBase* batch) : batch_(batch) {}
 
   virtual rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                                 const rocksdb::Slice& value) {
     if (column_family_id != 0) {
-      return rocksdb::Status::InvalidArgument("DBBatchInserter: column families not supported");
+      return rocksdb::Status::InvalidArgument("PmemBatchInserter: column families not supported");
     }
     return batch_->Put(key, value);
   }
   virtual rocksdb::Status DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) {
     if (column_family_id != 0) {
-      return rocksdb::Status::InvalidArgument("DBBatchInserter: column families not supported");
+      return rocksdb::Status::InvalidArgument("PmemBatchInserter: column families not supported");
     }
     return batch_->Delete(key);
   }
   virtual rocksdb::Status SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) {
     if (column_family_id != 0) {
-      return rocksdb::Status::InvalidArgument("DBBatchInserter: column families not supported");
+      return rocksdb::Status::InvalidArgument("PmemBatchInserter: column families not supported");
     }
     return batch_->SingleDelete(key);
   }
   virtual rocksdb::Status MergeCF(uint32_t column_family_id, const rocksdb::Slice& key,
                                   const rocksdb::Slice& value) {
     if (column_family_id != 0) {
-      return rocksdb::Status::InvalidArgument("DBBatchInserter: column families not supported");
+      return rocksdb::Status::InvalidArgument("PmemBatchInserter: column families not supported");
     }
     return batch_->Merge(key, value);
   }
   virtual rocksdb::Status DeleteRangeCF(uint32_t column_family_id, const rocksdb::Slice& begin_key,
                                         const rocksdb::Slice& end_key) {
     if (column_family_id != 0) {
-      return rocksdb::Status::InvalidArgument("DBBatchInserter: column families not supported");
+      return rocksdb::Status::InvalidArgument("PmemBatchInserter: column families not supported");
     }
     return batch_->DeleteRange(begin_key, end_key);
   }
@@ -463,26 +463,26 @@ class DBBatchInserter : public rocksdb::WriteBatch::Handler {
 
 }  // namespace
 
-DBBatch::DBBatch(DBEngine* db)
-    : DBEngine(db->rep, db->iters), updates(0), has_delete_range(false), batch(&kComparator) {}
+PmemBatch::PmemBatch(PmemEngine* db)
+    : PmemEngine(db->rep, db->iters), updates(0), has_delete_range(false), batch(&kComparator) {}
 
-DBBatch::~DBBatch() {}
+PmemBatch::~PmemBatch() {}
 
-DBStatus DBBatch::Put(DBKey key, DBSlice value) {
+PmemStatus PmemBatch::Put(PmemKey key, PmemSlice value) {
   ++updates;
   batch.Put(EncodeKey(key), ToSlice(value));
   return kSuccess;
 }
 
-DBStatus DBBatch::Merge(DBKey key, DBSlice value) {
+PmemStatus PmemBatch::Merge(PmemKey key, PmemSlice value) {
   ++updates;
   batch.Merge(EncodeKey(key), ToSlice(value));
   return kSuccess;
 }
 
-DBStatus DBBatch::Get(DBKey key, DBString* value) {
+PmemStatus PmemBatch::Get(PmemKey key, PmemString* value) {
   rocksdb::ReadOptions read_opts;
-  DBGetter base(rep, read_opts, EncodeKey(key));
+  PmemGetter base(rep, read_opts, EncodeKey(key));
   if (updates == 0) {
     return base.Get(value);
   }
@@ -496,210 +496,210 @@ DBStatus DBBatch::Get(DBKey key, DBString* value) {
   return ProcessDeltaKey(&base, iter.get(), base.key, value);
 }
 
-DBStatus DBBatch::Delete(DBKey key) {
+PmemStatus PmemBatch::Delete(PmemKey key) {
   ++updates;
   batch.Delete(EncodeKey(key));
   return kSuccess;
 }
 
-DBStatus DBBatch::SingleDelete(DBKey key) {
+PmemStatus PmemBatch::SingleDelete(PmemKey key) {
   ++updates;
   batch.SingleDelete(EncodeKey(key));
   return kSuccess;
 }
 
-DBStatus DBBatch::DeleteRange(DBKey start, DBKey end) {
+PmemStatus PmemBatch::DeleteRange(PmemKey start, PmemKey end) {
   ++updates;
   has_delete_range = true;
   batch.DeleteRange(EncodeKey(start), EncodeKey(end));
   return kSuccess;
 }
 
-DBStatus DBBatch::CommitBatch(bool sync) {
+PmemStatus PmemBatch::CommitBatch(bool sync) {
   if (updates == 0) {
     return kSuccess;
   }
   rocksdb::WriteOptions options;
   options.sync = sync;
-  return ToDBStatus(rep->Write(options, batch.GetWriteBatch()));
+  return ToPmemStatus(rep->Write(options, batch.GetWriteBatch()));
 }
 
-DBStatus DBBatch::ApplyBatchRepr(DBSlice repr, bool sync) {
+PmemStatus PmemBatch::ApplyBatchRepr(PmemSlice repr, bool sync) {
   if (sync) {
     return FmtStatus("unsupported");
   }
   // TODO(peter): It would be slightly more efficient to iterate over
   // repr directly instead of first converting it to a string.
-  DBBatchInserter inserter(&batch);
+  PmemBatchInserter inserter(&batch);
   rocksdb::WriteBatch batch(ToString(repr));
   rocksdb::Status status = batch.Iterate(&inserter);
   if (!status.ok()) {
-    return ToDBStatus(status);
+    return ToPmemStatus(status);
   }
   updates += batch.Count();
   return kSuccess;
 }
 
-DBSlice DBBatch::BatchRepr() { return ToDBSlice(batch.GetWriteBatch()->Data()); }
+PmemSlice PmemBatch::BatchRepr() { return ToPmemSlice(batch.GetWriteBatch()->Data()); }
 
-DBIterator* DBBatch::NewIter(DBIterOptions iter_options) {
+PmemIterator* PmemBatch::NewIter(PmemIterOptions iter_options) {
   if (has_delete_range) {
     // TODO(peter): We don't support iterators when the batch contains
     // delete range entries.
     return NULL;
   }
-  DBIterator* iter = new DBIterator(iters, iter_options);
+  PmemIterator* iter = new PmemIterator(iters, iter_options);
   rocksdb::Iterator* base = rep->NewIterator(iter->read_opts);
   rocksdb::WBWIIterator* delta = batch.NewIterator();
   iter->rep.reset(new BaseDeltaIterator(base, delta, iter_options.prefix, &iter->upper_bound));
   return iter;
 }
 
-DBStatus DBBatch::GetStats(DBStatsResult* stats) { return FmtStatus("unsupported"); }
+PmemStatus PmemBatch::GetStats(PmemStatsResult* stats) { return FmtStatus("unsupported"); }
 
-DBStatus DBBatch::GetTickersAndHistograms(DBTickersAndHistogramsResult* stats) { return FmtStatus("unsupported"); }
+PmemStatus PmemBatch::GetTickersAndHistograms(PmemTickersAndHistogramsResult* stats) { return FmtStatus("unsupported"); }
 
-DBString DBBatch::GetCompactionStats() { return ToDBString("unsupported"); }
+PmemString PmemBatch::GetCompactionStats() { return ToPmemString("unsupported"); }
 
-DBStatus DBBatch::GetEnvStats(DBEnvStatsResult* stats) { return FmtStatus("unsupported"); }
+PmemStatus PmemBatch::GetEnvStats(PmemEnvStatsResult* stats) { return FmtStatus("unsupported"); }
 
-DBStatus DBBatch::GetEncryptionRegistries(DBEncryptionRegistries* result) {
+PmemStatus PmemBatch::GetEncryptionRegistries(PmemEncryptionRegistries* result) {
   return FmtStatus("unsupported");
 }
 
-DBStatus DBBatch::EnvWriteFile(DBSlice path, DBSlice contents) { return FmtStatus("unsupported"); }
+PmemStatus PmemBatch::EnvWriteFile(PmemSlice path, PmemSlice contents) { return FmtStatus("unsupported"); }
 
-DBStatus DBBatch::EnvOpenFile(DBSlice path, rocksdb::WritableFile** file) {
+PmemStatus PmemBatch::EnvOpenFile(PmemSlice path, rocksdb::WritableFile** file) {
   return FmtStatus("unsupported");
 }
 
-DBStatus DBBatch::EnvReadFile(DBSlice path, DBSlice* contents) { return FmtStatus("unsupported"); }
+PmemStatus PmemBatch::EnvReadFile(PmemSlice path, PmemSlice* contents) { return FmtStatus("unsupported"); }
 
-DBStatus DBBatch::EnvCloseFile(rocksdb::WritableFile* file) { return FmtStatus("unsupported"); }
+PmemStatus PmemBatch::EnvCloseFile(rocksdb::WritableFile* file) { return FmtStatus("unsupported"); }
 
-DBStatus DBBatch::EnvSyncFile(rocksdb::WritableFile* file) { return FmtStatus("unsupported"); }
+PmemStatus PmemBatch::EnvSyncFile(rocksdb::WritableFile* file) { return FmtStatus("unsupported"); }
 
-DBStatus DBBatch::EnvAppendFile(rocksdb::WritableFile* file, DBSlice contents) {
+PmemStatus PmemBatch::EnvAppendFile(rocksdb::WritableFile* file, PmemSlice contents) {
   return FmtStatus("unsupported");
 }
 
-DBStatus DBBatch::EnvDeleteFile(DBSlice path) { return FmtStatus("unsupported"); }
+PmemStatus PmemBatch::EnvDeleteFile(PmemSlice path) { return FmtStatus("unsupported"); }
 
-DBStatus DBBatch::EnvDeleteDirAndFiles(DBSlice dir) { return FmtStatus("unsupported"); }
+PmemStatus PmemBatch::EnvDeleteDirAndFiles(PmemSlice dir) { return FmtStatus("unsupported"); }
 
-DBStatus DBBatch::EnvLinkFile(DBSlice oldname, DBSlice newname) { return FmtStatus("unsupported"); }
+PmemStatus PmemBatch::EnvLinkFile(PmemSlice oldname, PmemSlice newname) { return FmtStatus("unsupported"); }
 
-DBWriteOnlyBatch::DBWriteOnlyBatch(DBEngine* db) : DBEngine(db->rep, db->iters), updates(0) {}
+PmemWriteOnlyBatch::PmemWriteOnlyBatch(PmemEngine* db) : PmemEngine(db->rep, db->iters), updates(0) {}
 
-DBWriteOnlyBatch::~DBWriteOnlyBatch() {}
+PmemWriteOnlyBatch::~PmemWriteOnlyBatch() {}
 
-DBStatus DBWriteOnlyBatch::Put(DBKey key, DBSlice value) {
+PmemStatus PmemWriteOnlyBatch::Put(PmemKey key, PmemSlice value) {
   ++updates;
   batch.Put(EncodeKey(key), ToSlice(value));
   return kSuccess;
 }
 
-DBStatus DBWriteOnlyBatch::Merge(DBKey key, DBSlice value) {
+PmemStatus PmemWriteOnlyBatch::Merge(PmemKey key, PmemSlice value) {
   ++updates;
   batch.Merge(EncodeKey(key), ToSlice(value));
   return kSuccess;
 }
 
-DBStatus DBWriteOnlyBatch::Get(DBKey key, DBString* value) { return FmtStatus("unsupported"); }
+PmemStatus PmemWriteOnlyBatch::Get(PmemKey key, PmemString* value) { return FmtStatus("unsupported"); }
 
-DBStatus DBWriteOnlyBatch::Delete(DBKey key) {
+PmemStatus PmemWriteOnlyBatch::Delete(PmemKey key) {
   ++updates;
   batch.Delete(EncodeKey(key));
   return kSuccess;
 }
 
-DBStatus DBWriteOnlyBatch::SingleDelete(DBKey key) {
+PmemStatus PmemWriteOnlyBatch::SingleDelete(PmemKey key) {
   ++updates;
   batch.SingleDelete(EncodeKey(key));
   return kSuccess;
 }
 
-DBStatus DBWriteOnlyBatch::DeleteRange(DBKey start, DBKey end) {
+PmemStatus PmemWriteOnlyBatch::DeleteRange(PmemKey start, PmemKey end) {
   ++updates;
   batch.DeleteRange(EncodeKey(start), EncodeKey(end));
   return kSuccess;
 }
 
-DBStatus DBWriteOnlyBatch::CommitBatch(bool sync) {
+PmemStatus PmemWriteOnlyBatch::CommitBatch(bool sync) {
   if (updates == 0) {
     return kSuccess;
   }
   rocksdb::WriteOptions options;
   options.sync = sync;
-  return ToDBStatus(rep->Write(options, &batch));
+  return ToPmemStatus(rep->Write(options, &batch));
 }
 
-DBStatus DBWriteOnlyBatch::ApplyBatchRepr(DBSlice repr, bool sync) {
+PmemStatus PmemWriteOnlyBatch::ApplyBatchRepr(PmemSlice repr, bool sync) {
   if (sync) {
     return FmtStatus("unsupported");
   }
   // TODO(peter): It would be slightly more efficient to iterate over
   // repr directly instead of first converting it to a string.
-  DBBatchInserter inserter(&batch);
+  PmemBatchInserter inserter(&batch);
   rocksdb::WriteBatch batch(ToString(repr));
   rocksdb::Status status = batch.Iterate(&inserter);
   if (!status.ok()) {
-    return ToDBStatus(status);
+    return ToPmemStatus(status);
   }
   updates += batch.Count();
   return kSuccess;
 }
 
-DBSlice DBWriteOnlyBatch::BatchRepr() { return ToDBSlice(batch.GetWriteBatch()->Data()); }
+PmemSlice PmemWriteOnlyBatch::BatchRepr() { return ToPmemSlice(batch.GetWriteBatch()->Data()); }
 
-DBIterator* DBWriteOnlyBatch::NewIter(DBIterOptions) { return NULL; }
+PmemIterator* PmemWriteOnlyBatch::NewIter(PmemIterOptions) { return NULL; }
 
-DBStatus DBWriteOnlyBatch::GetStats(DBStatsResult* stats) { return FmtStatus("unsupported"); }
+PmemStatus PmemWriteOnlyBatch::GetStats(PmemStatsResult* stats) { return FmtStatus("unsupported"); }
 
-DBStatus DBWriteOnlyBatch::GetTickersAndHistograms(DBTickersAndHistogramsResult* stats) { return FmtStatus("unsupported"); }
+PmemStatus PmemWriteOnlyBatch::GetTickersAndHistograms(PmemTickersAndHistogramsResult* stats) { return FmtStatus("unsupported"); }
 
-DBString DBWriteOnlyBatch::GetCompactionStats() { return ToDBString("unsupported"); }
+PmemString PmemWriteOnlyBatch::GetCompactionStats() { return ToPmemString("unsupported"); }
 
-DBStatus DBWriteOnlyBatch::GetEnvStats(DBEnvStatsResult* stats) { return FmtStatus("unsupported"); }
+PmemStatus PmemWriteOnlyBatch::GetEnvStats(PmemEnvStatsResult* stats) { return FmtStatus("unsupported"); }
 
-DBStatus DBWriteOnlyBatch::GetEncryptionRegistries(DBEncryptionRegistries* result) {
+PmemStatus PmemWriteOnlyBatch::GetEncryptionRegistries(PmemEncryptionRegistries* result) {
   return FmtStatus("unsupported");
 }
 
-DBStatus DBWriteOnlyBatch::EnvWriteFile(DBSlice path, DBSlice contents) {
+PmemStatus PmemWriteOnlyBatch::EnvWriteFile(PmemSlice path, PmemSlice contents) {
   return FmtStatus("unsupported");
 }
 
-DBStatus DBWriteOnlyBatch::EnvOpenFile(DBSlice path, rocksdb::WritableFile** file) {
+PmemStatus PmemWriteOnlyBatch::EnvOpenFile(PmemSlice path, rocksdb::WritableFile** file) {
   return FmtStatus("unsupported");
 }
 
-DBStatus DBWriteOnlyBatch::EnvReadFile(DBSlice path, DBSlice* contents) {
+PmemStatus PmemWriteOnlyBatch::EnvReadFile(PmemSlice path, PmemSlice* contents) {
   return FmtStatus("unsupported");
 }
 
-DBStatus DBWriteOnlyBatch::EnvCloseFile(rocksdb::WritableFile* file) {
+PmemStatus PmemWriteOnlyBatch::EnvCloseFile(rocksdb::WritableFile* file) {
   return FmtStatus("unsupported");
 }
 
-DBStatus DBWriteOnlyBatch::EnvSyncFile(rocksdb::WritableFile* file) {
+PmemStatus PmemWriteOnlyBatch::EnvSyncFile(rocksdb::WritableFile* file) {
   return FmtStatus("unsupported");
 }
 
-DBStatus DBWriteOnlyBatch::EnvAppendFile(rocksdb::WritableFile* file, DBSlice contents) {
+PmemStatus PmemWriteOnlyBatch::EnvAppendFile(rocksdb::WritableFile* file, PmemSlice contents) {
   return FmtStatus("unsupported");
 }
 
-DBStatus DBWriteOnlyBatch::EnvDeleteFile(DBSlice path) { return FmtStatus("unsupported"); }
+PmemStatus PmemWriteOnlyBatch::EnvDeleteFile(PmemSlice path) { return FmtStatus("unsupported"); }
 
-DBStatus DBWriteOnlyBatch::EnvDeleteDirAndFiles(DBSlice dir) { return FmtStatus("unsupported"); }
+PmemStatus PmemWriteOnlyBatch::EnvDeleteDirAndFiles(PmemSlice dir) { return FmtStatus("unsupported"); }
 
-DBStatus DBWriteOnlyBatch::EnvLinkFile(DBSlice oldname, DBSlice newname) {
+PmemStatus PmemWriteOnlyBatch::EnvLinkFile(PmemSlice oldname, PmemSlice newname) {
   return FmtStatus("unsupported");
 }
 
-rocksdb::WriteBatch::Handler* GetDBBatchInserter(::rocksdb::WriteBatchBase* batch) {
-  return new DBBatchInserter(batch);
+rocksdb::WriteBatch::Handler* GetPmemBatchInserter(::rocksdb::WriteBatchBase* batch) {
+  return new PmemBatchInserter(batch);
 }
 
 }  // namespace cockroach

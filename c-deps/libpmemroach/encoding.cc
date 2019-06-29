@@ -151,19 +151,19 @@ void EncodeTimestamp(std::string& s, int64_t wall_time, int32_t logical) {
   }
 }
 
-std::string EncodeTimestamp(DBTimestamp ts) {
+std::string EncodeTimestamp(PmemTimestamp ts) {
   std::string s;
   s.reserve(kMVCCVersionTimestampSize);
   EncodeTimestamp(s, ts.wall_time, ts.logical);
   return s;
 }
 
-bool EmptyTimestamp(DBTimestamp ts) {
+bool EmptyTimestamp(PmemTimestamp ts) {
   return ts.wall_time == 0 && ts.logical == 0;
 }
 
 // MVCC keys are encoded as <key>\x00[<wall_time>[<logical>]]<#timestamp-bytes>. A
-// custom RocksDB comparator (DBComparator) is used to maintain the desired
+// custom RocksPmem comparator (PmemComparator) is used to maintain the desired
 // ordering as these keys do not sort lexicographically correctly.
 std::string EncodeKey(const rocksdb::Slice& key, int64_t wall_time, int32_t logical) {
   std::string s;
@@ -171,7 +171,7 @@ std::string EncodeKey(const rocksdb::Slice& key, int64_t wall_time, int32_t logi
   s.reserve(key.size() + 1 + (ts ? 1 + kMVCCVersionTimestampSize : 0));
   s.append(key.data(), key.size());
   if (ts) {
-    // Add a NUL prefix to the timestamp data. See DBPrefixExtractor.Transform
+    // Add a NUL prefix to the timestamp data. See PmemPrefixExtractor.Transform
     // for more details.
     s.push_back(0);
     EncodeTimestamp(s, wall_time, logical);
@@ -181,9 +181,9 @@ std::string EncodeKey(const rocksdb::Slice& key, int64_t wall_time, int32_t logi
 }
 
 // MVCC keys are encoded as <key>\x00[<wall_time>[<logical>]]<#timestamp-bytes>. A
-// custom RocksDB comparator (DBComparator) is used to maintain the desired
+// custom RocksPmem comparator (PmemComparator) is used to maintain the desired
 // ordering as these keys do not sort lexicographically correctly.
-std::string EncodeKey(DBKey k) { return EncodeKey(ToSlice(k.key), k.wall_time, k.logical); }
+std::string EncodeKey(PmemKey k) { return EncodeKey(ToSlice(k.key), k.wall_time, k.logical); }
 
 WARN_UNUSED_RESULT bool DecodeTimestamp(rocksdb::Slice* timestamp, int64_t* wall_time,
                                         int32_t* logical) {
@@ -263,7 +263,7 @@ rocksdb::Slice KeyPrefix(const rocksdb::Slice& src) {
   if (!SplitKey(src, &key, &ts)) {
     return src;
   }
-  // RocksDB requires that keys generated via Transform be comparable with
+  // RocksPmem requires that keys generated via Transform be comparable with
   // normal encoded MVCC keys. Encoded MVCC keys have a suffix indicating the
   // number of bytes of timestamp data. MVCC keys without a timestamp have a
   // suffix of 0. We're careful in EncodeKey to make sure that the user-key

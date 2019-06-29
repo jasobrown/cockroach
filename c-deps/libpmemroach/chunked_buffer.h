@@ -30,9 +30,9 @@ class chunkedBuffer {
   // Clear this chunkedBuffer.
   void Clear();
 
-  void GetChunks(DBSlice** bufs, int32_t* len) {
+  void GetChunks(PmemSlice** bufs, int32_t* len) {
     // Cap the last buffer's size to the amount that's been written to it.
-    DBSlice& last = bufs_.back();
+    PmemSlice& last = bufs_.back();
     last.len = buf_ptr_ - last.data;
     *bufs = &bufs_.front();
     *len = bufs_.size();
@@ -45,7 +45,7 @@ class chunkedBuffer {
   void put(const char* data, int len, int next_size_hint);
 
  private:
-  std::vector<DBSlice> bufs_;
+  std::vector<PmemSlice> bufs_;
   int64_t count_;
   char* buf_ptr_;
 };

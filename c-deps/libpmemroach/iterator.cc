@@ -19,7 +19,7 @@
 
 using namespace cockroach;
 
-DBIterator::DBIterator(std::atomic<int64_t>* iters, DBIterOptions iter_options) : iters_count(iters) {
+PmemIterator::PmemIterator(std::atomic<int64_t>* iters, PmemIterOptions iter_options) : iters_count(iters) {
   read_opts.prefix_same_as_start = iter_options.prefix;
   read_opts.total_order_seek = !iter_options.prefix;
 
@@ -67,11 +67,11 @@ DBIterator::DBIterator(std::atomic<int64_t>* iters, DBIterOptions iter_options) 
   ++(*iters_count);
 }
 
-DBIterator::~DBIterator() {
+PmemIterator::~PmemIterator() {
   --(*iters_count);
 }
 
-void DBIterator::SetLowerBound(DBKey key) {
+void PmemIterator::SetLowerBound(PmemKey key) {
   if (key.key.data == NULL) {
     lower_bound_str = kMinKey.data();
   } else {
@@ -81,7 +81,7 @@ void DBIterator::SetLowerBound(DBKey key) {
 }
 
 
-void DBIterator::SetUpperBound(DBKey key) {
+void PmemIterator::SetUpperBound(PmemKey key) {
   if (key.key.data == NULL) {
     upper_bound_str = kMaxKey.data();
   } else {

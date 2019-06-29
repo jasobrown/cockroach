@@ -51,8 +51,8 @@ static const int kMaxItersBeforeSeek = 10;
 // key/value.
 template <bool reverse> class mvccScanner {
  public:
-  mvccScanner(DBIterator* iter, DBSlice start, DBSlice end, DBTimestamp timestamp, int64_t max_keys,
-              DBTxn txn, bool inconsistent, bool tombstones, bool ignore_sequence)
+  mvccScanner(PmemIterator* iter, PmemSlice start, PmemSlice end, PmemTimestamp timestamp, int64_t max_keys,
+              PmemTxn txn, bool inconsistent, bool tombstones, bool ignore_sequence)
       : iter_(iter),
         iter_rep_(iter->rep.get()),
         start_key_(ToSlice(start)),
@@ -106,7 +106,7 @@ template <bool reverse> class mvccScanner {
   // intent along with an error or read the intent value if we're
   // reading transactionally and we own the intent.
 
-  const DBScanResults& get() {
+  const PmemScanResults& get() {
     if (!iterSeek(EncodeKey(start_key_, 0, 0))) {
       return results_;
     }
@@ -114,7 +114,7 @@ template <bool reverse> class mvccScanner {
     return fillResults();
   }
 
-  const DBScanResults& scan() {
+  const PmemScanResults& scan() {
     // TODO(peter): Remove this timing/debugging code.
     // auto pctx = rocksdb::get_perf_context();
     // pctx->Reset();
@@ -140,12 +140,12 @@ template <bool reverse> class mvccScanner {
       if (reverse) {
         // It is possible for cur_key_ to be pointing into mvccScanner.saved_buf_
         // instead of iter_rep_'s underlying storage if iterating in reverse (see
-        // iterPeekPrev), so copy the key onto the DBIterator struct to ensure it
-        // has a lifetime that outlives the DBScanResults.
+        // iterPeekPrev), so copy the key onto the PmemIterator struct to ensure it
+        // has a lifetime that outlives the PmemScanResults.
         iter_->rev_resume_key.assign(cur_key_.data(), cur_key_.size());
-        results_.resume_key = ToDBSlice(iter_->rev_resume_key);
+        results_.resume_key = ToPmemSlice(iter_->rev_resume_key);
       } else {
-        results_.resume_key = ToDBSlice(cur_key_);
+        results_.resume_key = ToPmemSlice(cur_key_);
       }
     }
 
@@ -153,14 +153,14 @@ template <bool reverse> class mvccScanner {
   }
 
  private:
-  const DBScanResults& fillResults() {
+  const PmemScanResults& fillResults() {
     if (results_.status.len == 0) {
       if (kvs_->Count() > 0) {
         kvs_->GetChunks(&results_.data.bufs, &results_.data.len);
         results_.data.count = kvs_->Count();
       }
       if (intents_->Count() > 0) {
-        results_.intents = ToDBSlice(intents_->Data());
+        results_.intents = ToPmemSlice(intents_->Data());
       }
       iter_->kvs.reset(kvs_.release());
       iter_->intents.reset(intents_.release());
@@ -196,14 +196,14 @@ template <bool reverse> class mvccScanner {
     return true;
   }
 
-  bool uncertaintyError(DBTimestamp ts) {
+  bool uncertaintyError(PmemTimestamp ts) {
     results_.uncertainty_timestamp = ts;
     kvs_->Clear();
     intents_->Clear();
     return false;
   }
 
-  bool setStatus(const DBStatus& status) {
+  bool setStatus(const PmemStatus& status) {
     results_.status = status;
     return false;
   }
@@ -256,7 +256,7 @@ template <bool reverse> class mvccScanner {
     }
 
     const bool own_intent = (meta_.txn().id() == txn_id_);
-    const DBTimestamp meta_timestamp = ToDBTimestamp(meta_.timestamp());
+    const PmemTimestamp meta_timestamp = ToPmemTimestamp(meta_.timestamp());
     if (timestamp_ < meta_timestamp && !own_intent) {
       // 5. The key contains an intent, but we're reading before the
       // intent. Seek to the desired version. Note that if we own the
@@ -281,7 +281,7 @@ template <bool reverse> class mvccScanner {
         return false;
       }
       intents_->Put(cur_raw_key_, cur_value_);
-      return seekVersion(PrevTimestamp(ToDBTimestamp(meta_.timestamp())), false);
+      return seekVersion(PrevTimestamp(ToPmemTimestamp(meta_.timestamp())), false);
     }
 
     if (!own_intent) {
@@ -318,7 +318,7 @@ template <bool reverse> class mvccScanner {
         // transaction all together. We ignore the intent by insisting that the
         // timestamp we're reading at is a historical timestamp < the intent
         // timestamp.
-        return seekVersion(PrevTimestamp(ToDBTimestamp(meta_.timestamp())), false);
+        return seekVersion(PrevTimestamp(ToPmemTimestamp(meta_.timestamp())), false);
       }
     }
 
@@ -336,7 +336,7 @@ template <bool reverse> class mvccScanner {
     // restarted and an earlier iteration wrote the value we're now
     // reading. In this case, we ignore the intent and read the
     // previous value as if the transaction were starting fresh.
-    return seekVersion(PrevTimestamp(ToDBTimestamp(meta_.timestamp())), false);
+    return seekVersion(PrevTimestamp(ToPmemTimestamp(meta_.timestamp())), false);
   }
 
   // nextKey advances the iterator to point to the next MVCC key
@@ -483,7 +483,7 @@ template <bool reverse> class mvccScanner {
   // timestamp_ a bit subtle. Consider passing a
   // uncertainAboveTimestamp parameter. Or better, templatize this
   // method and pass a "check" functor.
-  bool seekVersion(DBTimestamp desired_timestamp, bool check_uncertainty) {
+  bool seekVersion(PmemTimestamp desired_timestamp, bool check_uncertainty) {
     key_buf_.assign(cur_key_.data(), cur_key_.size());
 
     for (int i = 0; i < iters_before_seek_; ++i) {
@@ -638,21 +638,21 @@ template <bool reverse> class mvccScanner {
   }
 
  public:
-  DBIterator* const iter_;
+  PmemIterator* const iter_;
   rocksdb::Iterator* const iter_rep_;
   const rocksdb::Slice start_key_;
   const rocksdb::Slice end_key_;
   const int64_t max_keys_;
-  const DBTimestamp timestamp_;
+  const PmemTimestamp timestamp_;
   const rocksdb::Slice txn_id_;
   const uint32_t txn_epoch_;
   const int32_t txn_sequence_;
-  const DBTimestamp txn_max_timestamp_;
+  const PmemTimestamp txn_max_timestamp_;
   const bool inconsistent_;
   const bool tombstones_;
   const bool ignore_sequence_;
   const bool check_uncertainty_;
-  DBScanResults results_;
+  PmemScanResults results_;
   std::unique_ptr<chunkedBuffer> kvs_;
   std::unique_ptr<rocksdb::WriteBatch> intents_;
   std::string key_buf_;
@@ -671,7 +671,7 @@ template <bool reverse> class mvccScanner {
   // peeked_ is true).
   rocksdb::Slice cur_value_;
   // cur_timestamp_ is the timestamp for a decoded MVCC key.
-  DBTimestamp cur_timestamp_;
+  PmemTimestamp cur_timestamp_;
   int iters_before_seek_;
 };
 

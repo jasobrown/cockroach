@@ -238,7 +238,7 @@ WARN_UNUSED_RESULT bool ConsolidateTimeSeriesValue(std::string* val, rocksdb::Lo
   return true;
 }
 
-class DBMergeOperator : public rocksdb::MergeOperator {
+class PmemMergeOperator : public rocksdb::MergeOperator {
   virtual const char* Name() const { return "cockroach_merge_operator"; }
 
   virtual bool FullMerge(const rocksdb::Slice& key, const rocksdb::Slice* existing_value,
@@ -248,9 +248,9 @@ class DBMergeOperator : public rocksdb::MergeOperator {
     // details about how errors returned by the merge operator are
     // handled. Need to test various error scenarios and decide on
     // desired behavior. Clear the key and it's gone. Corrupt it
-    // properly and RocksDB might refuse to work with it at all until
+    // properly and RocksPmem might refuse to work with it at all until
     // you clear it manually, which may also not be what we want. The
-    // problem with merges is that RocksDB won't really carry them out
+    // problem with merges is that RocksPmem won't really carry them out
     // while we have a chance to talk back to clients.
     //
     // If we indicate failure (*success = false), then the call to the
@@ -496,18 +496,18 @@ WARN_UNUSED_RESULT bool MergeValues(cockroach::storage::engine::enginepb::MVCCMe
 }
 
 // MergeResult serializes the result MVCCMetadata value into a byte slice.
-DBStatus MergeResult(cockroach::storage::engine::enginepb::MVCCMetadata* meta, DBString* result) {
+PmemStatus MergeResult(cockroach::storage::engine::enginepb::MVCCMetadata* meta, PmemString* result) {
   // TODO(pmattis): Should recompute checksum here. Need a crc32
   // implementation and need to verify the checksumming is identical
   // to what is being done in Go. Zlib's crc32 should be sufficient.
   result->len = meta->ByteSize();
   result->data = static_cast<char*>(malloc(result->len));
   if (!meta->SerializeToArray(result->data, result->len)) {
-    return ToDBString("serialization error");
+    return ToPmemString("serialization error");
   }
   return kSuccess;
 }
 
-rocksdb::MergeOperator* NewMergeOperator() { return new DBMergeOperator; }
+rocksdb::MergeOperator* NewMergeOperator() { return new PmemMergeOperator; }
 
 }  // namespace cockroach

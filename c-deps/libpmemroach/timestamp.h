@@ -19,13 +19,13 @@
 
 namespace cockroach {
 
-const DBTimestamp kZeroTimestamp = {0, 0};
+const PmemTimestamp kZeroTimestamp = {0, 0};
 
-DBTimestamp ToDBTimestamp(const cockroach::util::hlc::LegacyTimestamp& timestamp) {
-  return DBTimestamp{timestamp.wall_time(), timestamp.logical()};
+PmemTimestamp ToPmemTimestamp(const cockroach::util::hlc::LegacyTimestamp& timestamp) {
+  return PmemTimestamp{timestamp.wall_time(), timestamp.logical()};
 }
 
-DBTimestamp PrevTimestamp(DBTimestamp ts) {
+PmemTimestamp PrevTimestamp(PmemTimestamp ts) {
   if (ts.logical > 0) {
     --ts.logical;
   } else if (ts.wall_time == 0) {
@@ -38,20 +38,20 @@ DBTimestamp PrevTimestamp(DBTimestamp ts) {
   return ts;
 }
 
-inline bool operator==(const DBTimestamp& a, const DBTimestamp& b) {
+inline bool operator==(const PmemTimestamp& a, const PmemTimestamp& b) {
   return a.wall_time == b.wall_time && a.logical == b.logical;
 }
 
-inline bool operator!=(const DBTimestamp& a, const DBTimestamp& b) { return !(a == b); }
+inline bool operator!=(const PmemTimestamp& a, const PmemTimestamp& b) { return !(a == b); }
 
-inline bool operator<(const DBTimestamp& a, const DBTimestamp& b) {
+inline bool operator<(const PmemTimestamp& a, const PmemTimestamp& b) {
   return a.wall_time < b.wall_time || (a.wall_time == b.wall_time && a.logical < b.logical);
 }
 
-inline bool operator>(const DBTimestamp& a, const DBTimestamp& b) { return b < a; }
+inline bool operator>(const PmemTimestamp& a, const PmemTimestamp& b) { return b < a; }
 
-inline bool operator<=(const DBTimestamp& a, const DBTimestamp& b) { return !(b < a); }
+inline bool operator<=(const PmemTimestamp& a, const PmemTimestamp& b) { return !(b < a); }
 
-inline bool operator>=(const DBTimestamp& a, const DBTimestamp& b) { return b <= a; }
+inline bool operator>=(const PmemTimestamp& a, const PmemTimestamp& b) { return b <= a; }
 
 }  // namespace cockroach

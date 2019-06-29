@@ -19,141 +19,139 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+Extern "C" {
 #endif
 
-// A DBSlice contains read-only data that does not need to be freed.
+// A PmemSlice contains read-only data that does not need to be freed.
 typedef struct {
   char* data;
   int len;
-} DBSlice;
+} PmemSlice;
 
-// A DBString is structurally identical to a DBSlice, but the data it
+// A PmemString is structurally identical to a PmemSlice, but the data it
 // contains must be freed via a call to free().
 typedef struct {
   char* data;
   int len;
-} DBString;
+} PmemString;
 
-// A DBStatus is an alias for DBString and is used to indicate that
+// A PmemStatus is an alias for PmemString and is used to indicate that
 // the return value indicates the success or failure of an
-// operation. If DBStatus.data == NULL the operation succeeded.
-typedef DBString DBStatus;
+// operation. If PmemStatus.data == NULL the operation succeeded.
+typedef PmemString PmemStatus;
 
 typedef struct {
-  DBSlice key;
+  PmemSlice key;
   int64_t wall_time;
   int32_t logical;
-} DBKey;
+} PmemKey;
 
 typedef struct {
   int64_t wall_time;
   int32_t logical;
-} DBTimestamp;
+} PmemTimestamp;
 
 typedef struct {
   bool prefix;
-  DBKey lower_bound;
-  DBKey upper_bound;
+  PmemKey lower_bound;
+  PmemKey upper_bound;
   bool with_stats;
-  DBTimestamp min_timestamp_hint;
-  DBTimestamp max_timestamp_hint;
-} DBIterOptions;
+  PmemTimestamp min_timestamp_hint;
+  PmemTimestamp max_timestamp_hint;
+} PmemIterOptions;
 
 typedef struct {
   bool valid;
-  DBKey key;
-  DBSlice value;
-  DBStatus status;
-} DBIterState;
+  PmemKey key;
+  PmemSlice value;
+  PmemStatus status;
+} PmemIterState;
 
-typedef struct DBCache DBCache;
 typedef struct PmemEngine PmemEngine;
-typedef struct DBIterator DBIterator;
-typedef void* DBWritableFile;
+typedef struct PmemIterator PmemIterator;
 
-// DBOptions contains local database options.
+// PmemOptions contains local database options.
 typedef struct {
   int num_cpu;
   bool must_exist;
   bool read_only;
-  DBSlice pmem_options;
-  DBSlice extra_options;
+  PmemSlice pmem_options;
+  PmemSlice extra_options;
 } PmemOptions;
 
 // Opens the database located in "dir", creating it if it doesn't
 // exist.
-DBStatus PmemOpen(PmemEngine** db, DBSlice dir, DBOptions options);
+PmemStatus PmemOpen(PmemEngine** db, PmemSlice dir, PmemOptions options);
 
 // // Destroys the database located in "dir". As the name implies, this
 // // operation is destructive. Use with caution.
-// DBStatus DBDestroy(DBSlice dir);
+// PmemStatus PmemDestroy(PmemSlice dir);
 
 // Closes the database, freeing memory and other resources.
-DBStatus PmemClose(PmemEngine* db);
+PmemStatus PmemClose(PmemEngine* db);
 
 // Stores the approximate on-disk size of the given key range into the
 // supplied uint64.
-DBStatus PmemApproximateDiskBytes(PmemEngine* db, DBKey start, DBKey end, uint64_t* size);
+PmemStatus PmemApproximateDiskBytes(PmemEngine* db, PmemKey start, PmemKey end, uint64_t* size);
 
 // Sets the database entry for "key" to "value".
-DBStatus PmemPut(PmemEngine* db, DBKey key, DBSlice value);
+PmemStatus PmemPut(PmemEngine* db, PmemKey key, PmemSlice value);
 
 // Merge the database entry (if any) for "key" with "value".
-DBStatus PmemMerge(PmemEngine* db, DBKey key, DBSlice value);
+PmemStatus PmemMerge(PmemEngine* db, PmemKey key, PmemSlice value);
 
 // Retrieves the database entry for "key".
-DBStatus PmemGet(PmemEngine* db, DBKey key, DBString* value);
+PmemStatus PmemGet(PmemEngine* db, PmemKey key, PmemString* value);
 
 // Deletes the database entry for "key".
-DBStatus PmemDelete(PmemEngine* db, DBKey key);
+PmemStatus PmemDelete(PmemEngine* db, PmemKey key);
 
 // Deletes the most recent database entry for "key". See the following
 // documentation for details on the subtleties of this operation:
 // https://github.com/facebook/rocksdb/wiki/Single-Delete.
-DBStatus PmemSingleDelete(PmemEngine* db, DBKey key);
+PmemStatus PmemSingleDelete(PmemEngine* db, PmemKey key);
 
 // Deletes a range of keys from start (inclusive) to end (exclusive).
-DBStatus PmemDeleteRange(PmemEngine* db, DBKey start, DBKey end);
+PmemStatus PmemDeleteRange(PmemEngine* db, PmemKey start, PmemKey end);
 
 // Deletes a range of keys from start (inclusive) to end
-// (exclusive). Unlike DBDeleteRange, this function finds the keys to
+// (exclusive). Unlike PmemDeleteRange, this function finds the keys to
 // delete by iterating over the supplied iterator and creating
 // tombstones for the individual keys.
-DBStatus PmemDeleteIterRange(PmemEngine* db, DBIterator* iter, DBKey start, DBKey end);
+PmemStatus PmemDeleteIterRange(PmemEngine* db, PmemIterator* iter, PmemKey start, PmemKey end);
 
 // Applies a batch of operations (puts, merges and deletes) to the
 // database atomically and closes the batch. It is only valid to call
-// this function on an engine created by DBNewBatch. If an error is
+// this function on an engine created by PmemNewBatch. If an error is
 // returned, the batch is not closed and it is the caller's
-// responsibility to call DBClose.
-DBStatus PmemCommitAndCloseBatch(PmemEngine* db, bool sync);
+// responsibility to call PmemClose.
+PmemStatus PmemCommitAndCloseBatch(PmemEngine* db, bool sync);
 
 // ApplyBatchRepr applies a batch of mutations encoded using that
-// batch representation returned by DBBatchRepr(). It is only valid to
-// call this function on an engine created by DBOpen() or DBNewBatch()
+// batch representation returned by PmemBatchRepr(). It is only valid to
+// call this function on an engine created by PmemOpen() or PmemNewBatch()
 // (i.e. not a snapshot).
-DBStatus PmemApplyBatchRepr(PmemEngine* db, DBSlice repr, bool sync);
+PmemStatus PmemApplyBatchRepr(PmemEngine* db, PmemSlice repr, bool sync);
 
 // Returns the internal batch representation. The returned value is
 // only valid until the next call to a method using the PmemEngine and
 // should thus be copied immediately. It is only valid to call this
-// function on an engine created by DBNewBatch.
-DBSlice PmemBatchRepr(PmemEngine* db);
+// function on an engine created by PmemNewBatch.
+PmemSlice PmemBatchRepr(PmemEngine* db);
 
 // Creates a new batch for performing a series of operations
-// atomically. Use DBCommitBatch() on the returned engine to apply the
+// atomically. Use PmemCommitBatch() on the returned engine to apply the
 // batch to the database. The writeOnly parameter controls whether the
 // batch can be used for reads or only for writes. A writeOnly batch
 // does not need to index keys for reading and can be faster if the
 // number of keys is large (and reads are not necessary). It is the
-// caller's responsibility to call DBClose().
-PmemEngine* DBNewBatch(PmemEngine* db, bool writeOnly);
+// caller's responsibility to call PmemClose().
+PmemEngine* PmemNewBatch(PmemEngine* db, bool writeOnly);
 
 // Creates a new database iterator.
 //
 // When iter_options.prefix is true, Seek will use the user-key prefix of the
-// key supplied to DBIterSeek() to restrict which sstables are searched, but
+// key supplied to PmemIterSeek() to restrict which sstables are searched, but
 // iteration (using Next) over keys without the same user-key prefix will not
 // work correctly (keys may be skipped).
 //
@@ -162,23 +160,23 @@ PmemEngine* DBNewBatch(PmemEngine* db, bool writeOnly);
 // performance when seeking within a region covered by range deletion
 // tombstones. See #24029 for discussion.
 //
-// When iter_options.with_stats is true, the iterator will collect RocksDB
-// performance counters which can be retrieved via `DBIterStats`.
+// When iter_options.with_stats is true, the iterator will collect RocksPmem
+// performance counters which can be retrieved via `PmemIterStats`.
 //
-// It is the caller's responsibility to call DBIterDestroy().
-DBIterator* DBNewIter(PmemEngine* db, DBIterOptions iter_options);
+// It is the caller's responsibility to call PmemIterDestroy().
+PmemIterator* PmemNewIter(PmemEngine* db, PmemIterOptions iter_options);
 
 // Destroys an iterator, freeing up any associated memory.
-void DBIterDestroy(DBIterator* iter);
+void PmemIterDestroy(PmemIterator* iter);
 
 // Positions the iterator at the first key that is >= "key".
-DBIterState DBIterSeek(DBIterator* iter, DBKey key);
+PmemIterState PmemIterSeek(PmemIterator* iter, PmemKey key);
 
 typedef struct {
   uint64_t internal_delete_skipped_count;
   // the number of SSTables touched (only for time bound iterators).
   // This field is populated from the table filter, not from the
-  // RocksDB perf counters.
+  // RocksPmem perf counters.
   //
   // TODO(tschottdorf): populate this field for all iterators.
   uint64_t timebound_num_ssts;
@@ -186,46 +184,46 @@ typedef struct {
   // just grep the repo for internal_delete_skipped_count. Sorry.
 } IteratorStats;
 
-IteratorStats DBIterStats(DBIterator* iter);
+IteratorStats PmemIterStats(PmemIterator* iter);
 
 // Positions the iterator at the first key in the database.
-DBIterState DBIterSeekToFirst(DBIterator* iter);
+PmemIterState PmemIterSeekToFirst(PmemIterator* iter);
 
 // Positions the iterator at the last key in the database.
-DBIterState DBIterSeekToLast(DBIterator* iter);
+PmemIterState PmemIterSeekToLast(PmemIterator* iter);
 
 // Advances the iterator to the next key. If skip_current_key_versions
 // is true, any remaining versions for the current key are
-// skipped. After this call, DBIterValid() returns 1 iff the iterator
+// skipped. After this call, PmemIterValid() returns 1 iff the iterator
 // was not positioned at the last key.
-DBIterState DBIterNext(DBIterator* iter, bool skip_current_key_versions);
+PmemIterState PmemIterNext(PmemIterator* iter, bool skip_current_key_versions);
 
 // Moves the iterator back to the previous key. If
 // skip_current_key_versions is true, any remaining versions for the
-// current key are skipped. After this call, DBIterValid() returns 1
+// current key are skipped. After this call, PmemIterValid() returns 1
 // iff the iterator was not positioned at the first key.
-DBIterState DBIterPrev(DBIterator* iter, bool skip_current_key_versions);
+PmemIterState PmemIterPrev(PmemIterator* iter, bool skip_current_key_versions);
 
-// DBIterSetLowerBound updates this iterator's lower bound.
-void DBIterSetLowerBound(DBIterator* iter, DBKey key);
+// PmemIterSetLowerBound updates this iterator's lower bound.
+void PmemIterSetLowerBound(PmemIterator* iter, PmemKey key);
 
-// DBIterSetUpperBound updates this iterator's upper bound.
-void DBIterSetUpperBound(DBIterator* iter, DBKey key);
+// PmemIterSetUpperBound updates this iterator's upper bound.
+void PmemIterSetUpperBound(PmemIterator* iter, PmemKey key);
 
 // Implements the merge operator on a single pair of values. update is
 // merged with existing. This method is provided for invocation from
 // Go code.
-DBStatus DBMergeOne(DBSlice existing, DBSlice update, DBString* new_value);
+PmemStatus PmemMergeOne(PmemSlice existing, PmemSlice update, PmemString* new_value);
 
 // Implements the partial merge operator on a single pair of values. update is
 // merged with existing. This method is provided for invocation from Go code.
-DBStatus DBPartialMergeOne(DBSlice existing, DBSlice update, DBString* new_value);
+PmemStatus PmemPartialMergeOne(PmemSlice existing, PmemSlice update, PmemString* new_value);
 
 // NB: The function (cStatsToGoStats) that converts these to the go
 // representation is unfortunately duplicated in engine and engineccl. If this
 // struct is changed, both places need to be updated.
 typedef struct {
-  DBStatus status;
+  PmemStatus status;
   int64_t live_bytes;
   int64_t key_bytes;
   int64_t val_bytes;
@@ -241,13 +239,13 @@ typedef struct {
   int64_t last_update_nanos;
 } MVCCStatsResult;
 
-MVCCStatsResult MVCCComputeStats(DBIterator* iter, DBKey start, DBKey end, int64_t now_nanos);
+MVCCStatsResult MVCCComputeStats(PmemIterator* iter, PmemKey start, PmemKey end, int64_t now_nanos);
 
-bool MVCCIsValidSplitKey(DBSlice key);
-DBStatus MVCCFindSplitKey(DBIterator* iter, DBKey start, DBKey end, DBKey min_split,
-                          int64_t target_size, DBString* split_key);
+bool MVCCIsValidSplitKey(PmemSlice key);
+PmemStatus MVCCFindSplitKey(PmemIterator* iter, PmemKey start, PmemKey end, PmemKey min_split,
+                          int64_t target_size, PmemString* split_key);
 
-// DBTxn contains the fields from a roachpb.Transaction that are
+// PmemTxn contains the fields from a roachpb.Transaction that are
 // necessary for MVCC Get and Scan operations. Note that passing a
 // serialized roachpb.Transaction appears to be a non-starter as an
 // alternative due to the performance overhead.
@@ -256,34 +254,34 @@ DBStatus MVCCFindSplitKey(DBIterator* iter, DBKey start, DBKey end, DBKey min_sp
 // https://github.com/petermattis/cppgo to generate C++ code that can
 // read the Go roachpb.Transaction structure.
 typedef struct {
-  DBSlice id;
+  PmemSlice id;
   uint32_t epoch;
   int32_t sequence;
-  DBTimestamp max_timestamp;
-} DBTxn;
+  PmemTimestamp max_timestamp;
+} PmemTxn;
 
 typedef struct {
-  DBSlice* bufs;
-  // len is the number of DBSlices in bufs.
+  PmemSlice* bufs;
+  // len is the number of PmemSlices in bufs.
   int32_t len;
   // count is the number of key/value pairs in bufs.
   int32_t count;
-} DBChunkedBuffer;
+} PmemChunkedBuffer;
 
-// DBScanResults contains the key/value pairs and intents encoded
-// using the RocksDB batch repr format.
+// PmemScanResults contains the key/value pairs and intents encoded
+// using the RocksPmem batch repr format.
 typedef struct {
-  DBStatus status;
-  DBChunkedBuffer data;
-  DBSlice intents;
-  DBTimestamp uncertainty_timestamp;
-  DBSlice resume_key;
-} DBScanResults;
+  PmemStatus status;
+  PmemChunkedBuffer data;
+  PmemSlice intents;
+  PmemTimestamp uncertainty_timestamp;
+  PmemSlice resume_key;
+} PmemScanResults;
 
-DBScanResults MVCCGet(DBIterator* iter, DBSlice key, DBTimestamp timestamp, DBTxn txn,
+PmemScanResults MVCCGet(PmemIterator* iter, PmemSlice key, PmemTimestamp timestamp, PmemTxn txn,
                       bool inconsistent, bool tombstones, bool ignore_sequence);
-DBScanResults MVCCScan(DBIterator* iter, DBSlice start, DBSlice end, DBTimestamp timestamp,
-                       int64_t max_keys, DBTxn txn, bool inconsistent, bool reverse,
+PmemScanResults MVCCScan(PmemIterator* iter, PmemSlice start, PmemSlice end, PmemTimestamp timestamp,
+                       int64_t max_keys, PmemTxn txn, bool inconsistent, bool reverse,
                        bool tombstones, bool ignore_sequence);
 
 #ifdef __cplusplus

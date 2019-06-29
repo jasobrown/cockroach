@@ -71,7 +71,7 @@ void chunkedBuffer::put(const char* data, int len, int next_size_hint) {
       new_size = max_size;
     }
 
-    DBSlice new_buf;
+    PmemSlice new_buf;
     new_buf.data = new char[new_size];
     new_buf.len = new_size;
     bufs_.push_back(new_buf);

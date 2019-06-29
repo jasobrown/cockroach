@@ -21,30 +21,30 @@
 using namespace cockroach;
 using namespace testutils;
 
-TEST(Libroach, DBOpenHook) {
-  DBOptions db_opts;
+TEST(Libroach, PmemOpenHook) {
+  PmemOptions db_opts;
 
   // Try an empty extra_options.
-  db_opts.extra_options = ToDBSlice("");
-  EXPECT_OK(DBOpenHookOSS(nullptr, "", db_opts, nullptr));
+  db_opts.extra_options = ToPmemSlice("");
+  EXPECT_OK(PmemOpenHookOSS(nullptr, "", db_opts, nullptr));
 
   // Try extra_options with anything at all.
-  db_opts.extra_options = ToDBSlice("blah");
-  EXPECT_ERR(DBOpenHookOSS(nullptr, "", db_opts, nullptr),
+  db_opts.extra_options = ToPmemSlice("blah");
+  EXPECT_ERR(PmemOpenHookOSS(nullptr, "", db_opts, nullptr),
              "encryption options are not supported in OSS builds");
 }
 
-TEST(Libroach, DBOpen) {
+TEST(Libroach, PmemOpen) {
   // Use a real directory, we need to create a file_registry.
   TempDirHandler dir;
 
   {
-    DBOptions db_opts = defaultDBOptions();
+    PmemOptions db_opts = defaultPmemOptions();
 
-    DBEngine* db;
-    EXPECT_STREQ(DBOpen(&db, ToDBSlice(dir.Path("")), db_opts).data, NULL);
-    DBEnvStatsResult stats;
-    EXPECT_STREQ(DBGetEnvStats(db, &stats).data, NULL);
+    PmemEngine* db;
+    EXPECT_STREQ(PmemOpen(&db, ToPmemSlice(dir.Path("")), db_opts).data, NULL);
+    PmemEnvStatsResult stats;
+    EXPECT_STREQ(PmemGetEnvStats(db, &stats).data, NULL);
     EXPECT_STREQ(stats.encryption_status.data, NULL);
     EXPECT_EQ(stats.encryption_type, 0);
     EXPECT_EQ(stats.total_files, 0);
@@ -53,34 +53,34 @@ TEST(Libroach, DBOpen) {
     EXPECT_EQ(stats.active_key_bytes, 0);
 
     // Fetch registries, parse, and check that they're empty.
-    DBEncryptionRegistries result;
-    EXPECT_STREQ(DBGetEncryptionRegistries(db, &result).data, NULL);
+    PmemEncryptionRegistries result;
+    EXPECT_STREQ(PmemGetEncryptionRegistries(db, &result).data, NULL);
     EXPECT_STREQ(result.key_registry.data, NULL);
     EXPECT_STREQ(result.file_registry.data, NULL);
 
-    DBClose(db);
+    PmemClose(db);
   }
   {
     // We're at storage version FileRegistry, but we don't have one.
-    DBOptions db_opts = defaultDBOptions();
+    PmemOptions db_opts = defaultPmemOptions();
     db_opts.use_file_registry = true;
 
-    DBEngine* db;
-    EXPECT_STREQ(DBOpen(&db, ToDBSlice(dir.Path("")), db_opts).data, NULL);
-    DBClose(db);
+    PmemEngine* db;
+    EXPECT_STREQ(PmemOpen(&db, ToPmemSlice(dir.Path("")), db_opts).data, NULL);
+    PmemClose(db);
   }
   {
     // We're at storage version FileRegistry, and the file_registry file exists:
     // this is not supported in OSS mode, or without encryption options.
-    DBOptions db_opts = defaultDBOptions();
+    PmemOptions db_opts = defaultPmemOptions();
     db_opts.use_file_registry = true;
 
     // Create bogus file registry.
     ASSERT_OK(rocksdb::WriteStringToFile(rocksdb::Env::Default(), "",
                                          dir.Path(kFileRegistryFilename), true));
 
-    DBEngine* db;
-    auto ret = DBOpen(&db, ToDBSlice(dir.Path("")), db_opts);
+    PmemEngine* db;
+    auto ret = PmemOpen(&db, ToPmemSlice(dir.Path("")), db_opts);
     EXPECT_STREQ(std::string(ret.data, ret.len).c_str(),
                  "Invalid argument: encryption was used on this store before, but no encryption "
                  "flags specified. You need a CCL build and must fully specify the "
@@ -90,16 +90,16 @@ TEST(Libroach, DBOpen) {
   {
     // We're at storage version FileRegistry, and the file_registry file exists.
     // We do have encryption options, but those are not supported in OSS builds.
-    DBOptions db_opts = defaultDBOptions();
+    PmemOptions db_opts = defaultPmemOptions();
     db_opts.use_file_registry = true;
-    db_opts.extra_options = ToDBSlice("blah");
+    db_opts.extra_options = ToPmemSlice("blah");
 
     // Create bogus file registry.
     ASSERT_OK(rocksdb::WriteStringToFile(rocksdb::Env::Default(), "",
                                          dir.Path(kFileRegistryFilename), true));
 
-    DBEngine* db;
-    auto ret = DBOpen(&db, ToDBSlice(dir.Path("")), db_opts);
+    PmemEngine* db;
+    auto ret = PmemOpen(&db, ToPmemSlice(dir.Path("")), db_opts);
     EXPECT_STREQ(std::string(ret.data, ret.len).c_str(),
                  "Invalid argument: encryption options are not supported in OSS builds");
     ASSERT_OK(rocksdb::Env::Default()->DeleteFile(dir.Path(kFileRegistryFilename)));

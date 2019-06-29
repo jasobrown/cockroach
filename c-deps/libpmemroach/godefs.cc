@@ -30,5 +30,5 @@ static void __attribute__((noreturn)) die_missing_symbol(const char* name) {
 // storage/engine when the final cockroach binary is linked.
 bool __attribute__((weak)) pmemV(int, int) { die_missing_symbol(__func__); }
 void __attribute__((weak)) pmemLog(int, char*, int) { die_missing_symbol(__func__); }
-char* __attribute__((weak)) prettyPrintPmemKey(DBKey) { die_missing_symbol(__func__); }
+char* __attribute__((weak)) prettyPrintPmemKey(PmemKey) { die_missing_symbol(__func__); }
 }  // extern "C"

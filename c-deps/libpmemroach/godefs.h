@@ -19,5 +19,5 @@
 extern "C" {
 bool __attribute__((weak)) pmemV(int, int);
 void __attribute__((weak)) pmemLog(int, char*, int);
-char* __attribute__((weak)) prettyPrintPmemKey(DBKey);
+char* __attribute__((weak)) prettyPrintPmemKey(PmemKey);
 }  // extern "C"

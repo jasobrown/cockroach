@@ -20,11 +20,11 @@
 #include <rocksdb/write_batch.h>
 #include "chunked_buffer.h"
 
-struct DBIterator {
-  DBIterator(std::atomic<int64_t>* iters, DBIterOptions iter_options);
-  ~DBIterator();
-  void SetLowerBound(DBKey key);
-  void SetUpperBound(DBKey key);
+struct PmemIterator {
+  PmemIterator(std::atomic<int64_t>* iters, PmemIterOptions iter_options);
+  ~PmemIterator();
+  void SetLowerBound(PmemKey key);
+  void SetUpperBound(PmemKey key);
 
   std::atomic<int64_t>* const iters_count;
   std::unique_ptr<rocksdb::Iterator> rep;

@@ -28,62 +28,62 @@ namespace cockroach {
 
 struct EnvManager;
 
-typedef rocksdb::Status(DBOpenHook)(std::shared_ptr<rocksdb::Logger> info_log,
-                                    const std::string& db_dir, const DBOptions opts,
+typedef rocksdb::Status(PmemOpenHook)(std::shared_ptr<rocksdb::Logger> info_log,
+                                    const std::string& db_dir, const PmemOptions opts,
                                     EnvManager* env_mgr);
 
-DBOpenHook DBOpenHookOSS;
+PmemOpenHook PmemOpenHookOSS;
 
-// ToDBSlice returns a DBSlice from a rocksdb::Slice
-inline DBSlice ToDBSlice(const rocksdb::Slice& s) {
-  DBSlice result;
+// ToPmemSlice returns a PmemSlice from a rocksdb::Slice
+inline PmemSlice ToPmemSlice(const rocksdb::Slice& s) {
+  PmemSlice result;
   result.data = const_cast<char*>(s.data());
   result.len = s.size();
   return result;
 }
 
-inline DBSlice ToDBSlice(const DBString& s) {
-  DBSlice result;
+inline PmemSlice ToPmemSlice(const PmemString& s) {
+  PmemSlice result;
   result.data = s.data;
   result.len = s.len;
   return result;
 }
 
-// ToDBString converts a rocksdb::Slice to a DBString.
-inline DBString ToDBString(const rocksdb::Slice& s) {
-  DBString result;
+// ToPmemString converts a rocksdb::Slice to a PmemString.
+inline PmemString ToPmemString(const rocksdb::Slice& s) {
+  PmemString result;
   result.len = s.size();
   result.data = static_cast<char*>(malloc(result.len));
   memcpy(result.data, s.data(), s.size());
   return result;
 }
 
-// ToDBKey converts a rocksb::Slice to a DBKey.
-DBKey ToDBKey(const rocksdb::Slice& s);
+// ToPmemKey converts a rocksb::Slice to a PmemKey.
+PmemKey ToPmemKey(const rocksdb::Slice& s);
 
-// ToString converts a DBSlice/DBString to a C++ string.
-inline std::string ToString(DBSlice s) { return std::string(s.data, s.len); }
-inline std::string ToString(DBString s) { return std::string(s.data, s.len); }
+// ToString converts a PmemSlice/PmemString to a C++ string.
+inline std::string ToString(PmemSlice s) { return std::string(s.data, s.len); }
+inline std::string ToString(PmemString s) { return std::string(s.data, s.len); }
 
-// ToSlice converts a DBSlice/DBString to a rocksdb::Slice.
-inline rocksdb::Slice ToSlice(DBSlice s) { return rocksdb::Slice(s.data, s.len); }
-inline rocksdb::Slice ToSlice(DBString s) { return rocksdb::Slice(s.data, s.len); }
+// ToSlice converts a PmemSlice/PmemString to a rocksdb::Slice.
+inline rocksdb::Slice ToSlice(PmemSlice s) { return rocksdb::Slice(s.data, s.len); }
+inline rocksdb::Slice ToSlice(PmemString s) { return rocksdb::Slice(s.data, s.len); }
 
 // MVCCComputeStatsInternal returns the mvcc stats of the data in an iterator.
 // Stats are only computed for keys between the given range.
-MVCCStatsResult MVCCComputeStatsInternal(::rocksdb::Iterator* const iter_rep, DBKey start,
-                                         DBKey end, int64_t now_nanos);
+MVCCStatsResult MVCCComputeStatsInternal(::rocksdb::Iterator* const iter_rep, PmemKey start,
+                                         PmemKey end, int64_t now_nanos);
 
 // ScopedStats wraps an iterator and, if that iterator has the stats
-// member populated, aggregates a subset of the RocksDB perf counters
+// member populated, aggregates a subset of the RocksPmem perf counters
 // into it (while the ScopedStats is live).
 class ScopedStats {
  public:
-  ScopedStats(DBIterator*);
+  ScopedStats(PmemIterator*);
   ~ScopedStats();
 
  private:
-  DBIterator* const iter_;
+  PmemIterator* const iter_;
   uint64_t internal_delete_skipped_count_base_;
 };
 
