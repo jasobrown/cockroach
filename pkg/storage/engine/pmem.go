@@ -17,9 +17,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/cockroachdb/cockroach/pkg/util/log/logtags"
-	"math"
+	"io/ioutil"
 	"os"
-	"path/filepath"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -32,21 +31,15 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/storage/engine/enginepb"
 	"github.com/cockroachdb/cockroach/pkg/util"
 	"github.com/cockroachdb/cockroach/pkg/util/hlc"
-	"github.com/cockroachdb/cockroach/pkg/util/humanizeutil"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
 	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
-	"github.com/dustin/go-humanize"
-	"github.com/elastic/gosigar"
 	"github.com/pkg/errors"
 )
 
-// TODO(tamird): why does rocksdb not link jemalloc,snappy statically?
-
 // #cgo CPPFLAGS: -I../../../c-deps/libpmemroach/include
-// #cgo LDFLAGS: -lroachpmem
+// #cgo LDFLAGS: -lpmemroach
 // #cgo LDFLAGS: -lprotobuf
-// #cgo LDFLAGS: -lrocksdb
 // #cgo linux LDFLAGS: -lrt -lpthread
 //
 // #include <stdlib.h>
@@ -115,12 +108,9 @@ type PMemConfig struct {
 	WarnLargeBatchThreshold time.Duration
 	// Settings instance for cluster-wide knobs.
 	Settings *cluster.Settings
-	// UseFileRegistry is true if the file registry is needed (eg: encryption-at-rest).
-	// This may force the store version to versionFileRegistry if currently lower.
-	UseFileRegistry bool
-	// RocksDBOptions contains RocksDB specific options using a semicolon
+	// PmemOptions contains RocksDB specific options using a semicolon
 	// separated key-value syntax ("key1=value1; key2=value2").
-	RocksDBOptions string
+	PmemOptions string
 	// ExtraOptions is a serialized protobuf set by Go CCL code and passed through
 	// to C CCL code.
 	ExtraOptions []byte
@@ -130,6 +120,7 @@ type PMemConfig struct {
 type PersistentMemoryEngine struct {
 	cfg   	PMemConfig
 	engine 	*C.PmemEngine
+	auxDir string
 
 	commit struct {
 		syncutil.Mutex
@@ -168,6 +159,16 @@ func NewPersistentMemoryEngine(cfg PMemConfig) (*PersistentMemoryEngine, error) 
 	pmem := &PersistentMemoryEngine{
 		cfg:   cfg,
 	}
+
+	// set up the auxillary directory. pretty sure we don't need it for pmem PoC, but just in case...
+	auxDir, err := ioutil.TempDir(os.TempDir(), "cockroach-pmem-auxiliary")
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(auxDir, 0755); err != nil {
+		return nil, err
+	}
+	pmem.auxDir = auxDir
 
 	if err := pmem.open(); err != nil {
 		return nil, err
@@ -229,15 +230,12 @@ func (pmem *PersistentMemoryEngine) open() error {
 	//	maxOpenFiles = pmem.cfg.MaxOpenFiles
 	//}
 
-	status := C.DBOpen(&pmem.engine, goToCSlice([]byte(pmem.cfg.Dir)),
-		C.DBOptions{
-			//cache:             pmem.cache.cache,
+	status := C.PmemOpen(&pmem.engine, goToCSlice([]byte(pmem.cfg.Dir)),
+		C.PmemOptions{
 			//num_cpu:           C.int(rocksdbConcurrency),
-			//max_open_files:    C.int(maxOpenFiles),
-			//use_file_registry: C.bool(newVersion == versionCurrent),
 			must_exist:        C.bool(r.cfg.MustExist),
 			read_only:         C.bool(r.cfg.ReadOnly),
-			rocksdb_options:   goToCSlice([]byte(r.cfg.RocksDBOptions)),
+			rocksdb_options:   goToCSlice([]byte(pmem.cfg.PmemOptions)),
 			extra_options:     goToCSlice(r.cfg.ExtraOptions),
 		})
 	if err := statusToError(status); err != nil {
@@ -267,7 +265,7 @@ func (pmem *PersistentMemoryEngine) Close() {
 
 	log.Infof(context.TODO(), "closing persistent memory engine instance at %q", pmem.cfg.Dir)
 	if pmem.engine != nil {
-		if err := statusToError(C.DBClose(pmem.engine)); err != nil {
+		if err := statusToError(C.PmemClose(pmem.engine)); err != nil {
 			panic(err)
 		}
 		pmem.engine = nil
@@ -372,89 +370,16 @@ func (pmem *PersistentMemoryEngine) Iterate(start, end MVCCKey, f func(MVCCKeyVa
 	return pmemIterate(pmem.engine, r, start, end, f)
 }
 
-// TODO(jeb)
+// TODO(jeb) fill me in with accurate info from the pmem -- might be
 // Capacity queries the underlying file system for disk capacity information.
 func (pmem *PersistentMemoryEngine) Capacity() (roachpb.StoreCapacity, error) {
-	fileSystemUsage := gosigar.FileSystemUsage{}
-	dir := pmem.cfg.Dir
-	if dir == "" {
-		// This is an in-memory instance. Pretend we're empty since we
-		// don't know better and only use this for testing. Using any
-		// part of the actual file system here can throw off allocator
-		// rebalancing in a hard-to-trace manner. See #7050.
-		return roachpb.StoreCapacity{
-			Capacity:  pmem.cfg.MaxSizeBytes,
-			Available: pmem.cfg.MaxSizeBytes,
-		}, nil
-	}
-	if err := fileSystemUsage.Get(dir); err != nil {
-		return roachpb.StoreCapacity{}, err
-	}
-
-	if fileSystemUsage.Total > math.MaxInt64 {
-		return roachpb.StoreCapacity{}, fmt.Errorf("unsupported disk size %s, max supported size is %s",
-			humanize.IBytes(fileSystemUsage.Total), humanizeutil.IBytes(math.MaxInt64))
-	}
-	if fileSystemUsage.Avail > math.MaxInt64 {
-		return roachpb.StoreCapacity{}, fmt.Errorf("unsupported disk size %s, max supported size is %s",
-			humanize.IBytes(fileSystemUsage.Avail), humanizeutil.IBytes(math.MaxInt64))
-	}
-	fsuTotal := int64(fileSystemUsage.Total)
-	fsuAvail := int64(fileSystemUsage.Avail)
-
-	// Find the total size of all the files in the pmem.dir and all its
-	// subdirectories.
-	var totalUsedBytes int64
-	if errOuter := filepath.Walk(pmem.cfg.Dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			// This can happen if rocksdb removes files out from under us - just keep
-			// going to get the best estimate we can.
-			if os.IsNotExist(err) {
-				return nil
-			}
-			// Special-case: if the store-dir is configured using the root of some fs,
-			// e.g. "/mnt/db", we might have special fs-created files like lost+found
-			// that we can't read, so just ignore them rather than crashing.
-			if os.IsPermission(err) && filepath.Base(path) == "lost+found" {
-				return nil
-			}
-			return err
-		}
-		if info.Mode().IsRegular() {
-			totalUsedBytes += info.Size()
-		}
-		return nil
-	}); errOuter != nil {
-		return roachpb.StoreCapacity{}, errOuter
-	}
-
-	// If no size limitation have been placed on the store size or if the
-	// limitation is greater than what's available, just return the actual
-	// totals.
-	if pmem.cfg.MaxSizeBytes == 0 || pmem.cfg.MaxSizeBytes >= fsuTotal || pmem.cfg.Dir == "" {
-		return roachpb.StoreCapacity{
-			Capacity:  fsuTotal,
-			Available: fsuAvail,
-			Used:      totalUsedBytes,
-		}, nil
-	}
-
-	available := pmem.cfg.MaxSizeBytes - totalUsedBytes
-	if available > fsuAvail {
-		available = fsuAvail
-	}
-	if available < 0 {
-		available = 0
-	}
 
 	return roachpb.StoreCapacity{
 		Capacity:  pmem.cfg.MaxSizeBytes,
-		Available: available,
-		Used:      totalUsedBytes,
+		Available: pmem.cfg.MaxSizeBytes,
 	}, nil
 }
 
-// CompactRange forces compaction over a specified range of keys in the database.
 func (pmem *PersistentMemoryEngine) CompactRange(start, end roachpb.Key, forceBottommost bool) error {
 	return nil
 }
@@ -468,9 +393,9 @@ func (pmem *PersistentMemoryEngine) ApproximateDiskBytes(from, to roachpb.Key) (
 	return uint64(result), err
 }
 
-// Flush causes RocksDB to write all in-memory data to disk immediately.
 func (pmem *PersistentMemoryEngine) Flush() error {
-	return statusToError(C.DBFlush(pmem.engine))
+	// nop in pmem-land
+	return nil
 }
 
 // NewIterator returns an iterator over this rocksdb engine.
@@ -506,6 +431,22 @@ func (pmem *PersistentMemoryEngine) GetStats() (*Stats, error) {
 		PendingCompactionBytesEstimate: 0,
 		L0FileCount:                    0,
 	}, nil
+}
+
+// GetEnvStats returns stats for the RocksDB env. This may include encryption stats.
+func (pmem *PersistentMemoryEngine) GetEnvStats() (*EnvStats, error) {
+	return &EnvStats{
+		TotalFiles:       0,
+		TotalBytes:       0,
+		ActiveKeyFiles:   0,
+		ActiveKeyBytes:   0,
+		EncryptionType:   0,
+		EncryptionStatus: nil,
+	}, nil
+}
+
+func (pmem *PersistentMemoryEngine) GetAuxiliaryDir() string {
+	return pmem.auxDir
 }
 
 // GetEncryptionRegistries returns the file and key registries when encryption is enabled
@@ -1509,7 +1450,13 @@ func pmemIterate(
 	return nil
 }
 
+func (pmem *PersistentMemoryEngine) IngestExternalFiles(ctx context.Context, paths []string, skipWritingSeqNo, allowFileModifications bool) error {
+	// nop
+	return nil
+}
+
 func (pmem *PersistentMemoryEngine) PreIngestDelay(ctx context.Context) {
+	// nop
 }
 
 // WriteFile writes data to a file in this RocksDB's env.
@@ -1517,36 +1464,34 @@ func (pmem *PersistentMemoryEngine) WriteFile(filename string, data []byte) erro
 	return statusToError(C.DBEnvWriteFile(pmem.engine, goToCSlice([]byte(filename)), goToCSlice(data)))
 }
 
-// OpenFile opens a DBFile, which is essentially a rocksdb WritableFile
-// with the given filename, in this RocksDB's env.
 func (pmem *PersistentMemoryEngine) OpenFile(filename string) (DBFile, error) {
-	return nil, errors.New("not supported in PoC")
+	panic("not supported in PoC")
 }
 
-// ReadFile reads the content from a file with the given filename. The file
-// must have been opened through Engine.OpenFile. Otherwise an error will be
-// returned.
 func (pmem *PersistentMemoryEngine) ReadFile(filename string) ([]byte, error) {
-	return nil, errors.New("not supported in PoC")
+	panic("not supported in PoC")
 }
 
-// DeleteFile deletes the file with the given filename from this RocksDB's env.
-// If the file with given filename doesn't exist, return os.ErrNotExist.
 func (pmem *PersistentMemoryEngine) DeleteFile(filename string) error {
-	return errors.New("not supported in PoC")
+	panic("not supported in PoC")
 }
 
-// DeleteDirAndFiles deletes the directory and any files it contains but
-// not subdirectories from this RocksDB's env. If dir does not exist,
-// DeleteDirAndFiles returns nil (no error).
 func (pmem *PersistentMemoryEngine) DeleteDirAndFiles(dir string) error {
-	return errors.New("not supported in PoC")
+	panic("not supported in PoC")
 }
 
-// LinkFile creates 'newname' as a hard link to 'oldname'. This use the Env responsible for the file
-// which may handle extra logic (eg: copy encryption settings for EncryptedEnv).
 func (pmem *PersistentMemoryEngine) LinkFile(oldname, newname string) error {
-	return errors.New("not supported in PoC")
+	panic("not supported in PoC")
+}
+
+func (pmem *PersistentMemoryEngine) NewReadOnly() ReadWriter {
+	// TODO(jeb) just gonna return 'this' hope it fakes the funk just enough ...
+	return pmem
+}
+
+func (pmem *PersistentMemoryEngine) NewSnapshot() Reader {
+	// TODO(jeb) just gonna return 'this' hope it fakes the funk just enough ...
+	return pmem
 }
 
 // NewSortedDiskMap implements the MapProvidingEngine interface.
@@ -1599,20 +1544,4 @@ func notFoundErrOrDefault(err error) error {
 		return os.ErrNotExist
 	}
 	return err
-}
-
-func (pmem *PersistentMemoryEngine) GetAuxiliaryDir() string {
-	panic("implement me")
-}
-
-func (pmem *PersistentMemoryEngine) NewReadOnly() ReadWriter {
-	panic("implement me")
-}
-
-func (pmem *PersistentMemoryEngine) NewSnapshot() Reader {
-	panic("implement me")
-}
-
-func (pmem *PersistentMemoryEngine) IngestExternalFiles(ctx context.Context, paths []string, skipWritingSeqNo, allowFileModifications bool) error {
-	panic("implement me")
 }
