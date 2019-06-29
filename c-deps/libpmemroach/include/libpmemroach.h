@@ -160,9 +160,6 @@ PmemEngine* PmemNewBatch(PmemEngine* db, bool writeOnly);
 // performance when seeking within a region covered by range deletion
 // tombstones. See #24029 for discussion.
 //
-// When iter_options.with_stats is true, the iterator will collect RocksPmem
-// performance counters which can be retrieved via `PmemIterStats`.
-//
 // It is the caller's responsibility to call PmemIterDestroy().
 PmemIterator* PmemNewIter(PmemEngine* db, PmemIterOptions iter_options);
 
@@ -171,20 +168,6 @@ void PmemIterDestroy(PmemIterator* iter);
 
 // Positions the iterator at the first key that is >= "key".
 PmemIterState PmemIterSeek(PmemIterator* iter, PmemKey key);
-
-typedef struct {
-  uint64_t internal_delete_skipped_count;
-  // the number of SSTables touched (only for time bound iterators).
-  // This field is populated from the table filter, not from the
-  // RocksPmem perf counters.
-  //
-  // TODO(tschottdorf): populate this field for all iterators.
-  uint64_t timebound_num_ssts;
-  // New fields added here must also be added in various other places;
-  // just grep the repo for internal_delete_skipped_count. Sorry.
-} IteratorStats;
-
-IteratorStats PmemIterStats(PmemIterator* iter);
 
 // Positions the iterator at the first key in the database.
 PmemIterState PmemIterSeekToFirst(PmemIterator* iter);
@@ -237,12 +220,12 @@ typedef struct {
   int64_t sys_bytes;
   int64_t sys_count;
   int64_t last_update_nanos;
-} MVCCStatsResult;
+} PmemMVCCStatsResult;
 
-MVCCStatsResult MVCCComputeStats(PmemIterator* iter, PmemKey start, PmemKey end, int64_t now_nanos);
+PmemMVCCStatsResult PmemMVCCComputeStats(PmemIterator* iter, PmemKey start, PmemKey end, int64_t now_nanos);
 
-bool MVCCIsValidSplitKey(PmemSlice key);
-PmemStatus MVCCFindSplitKey(PmemIterator* iter, PmemKey start, PmemKey end, PmemKey min_split,
+bool PmemMVCCIsValidSplitKey(PmemSlice key);
+PmemStatus PmemMVCCFindSplitKey(PmemIterator* iter, PmemKey start, PmemKey end, PmemKey min_split,
                           int64_t target_size, PmemString* split_key);
 
 // PmemTxn contains the fields from a roachpb.Transaction that are
@@ -278,9 +261,9 @@ typedef struct {
   PmemSlice resume_key;
 } PmemScanResults;
 
-PmemScanResults MVCCGet(PmemIterator* iter, PmemSlice key, PmemTimestamp timestamp, PmemTxn txn,
+PmemScanResults PmemMVCCGet(PmemIterator* iter, PmemSlice key, PmemTimestamp timestamp, PmemTxn txn,
                       bool inconsistent, bool tombstones, bool ignore_sequence);
-PmemScanResults MVCCScan(PmemIterator* iter, PmemSlice start, PmemSlice end, PmemTimestamp timestamp,
+PmemScanResults PmemMVCCScan(PmemIterator* iter, PmemSlice start, PmemSlice end, PmemTimestamp timestamp,
                        int64_t max_keys, PmemTxn txn, bool inconsistent, bool reverse,
                        bool tombstones, bool ignore_sequence);
 

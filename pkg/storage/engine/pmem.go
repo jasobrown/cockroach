@@ -19,8 +19,6 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/log/logtags"
 	"io/ioutil"
 	"os"
-	"runtime/debug"
-	"strings"
 	"sync"
 	"time"
 	"unsafe"
@@ -45,6 +43,7 @@ import (
 // #include <stdlib.h>
 // #include <libpmemroach.h>
 import "C"
+// include the libroach headers for simple things like DBStatus,  DBSlice, DBKey
 
 
 //export pmemV
@@ -72,7 +71,7 @@ func pmemLog(sevLvl C.int, s *C.char, n C.int) {
 }
 
 //export prettyPrintPmemKey
-func prettyPrintPmemKey(cKey C.DBKey) *C.char {
+func prettyPrintPmemKey(cKey C.PmemKey) *C.char {
 	mvccKey := MVCCKey{
 		Key: gobytes(unsafe.Pointer(cKey.key.data), int(cKey.key.len)),
 		Timestamp: hlc.Timestamp{
@@ -230,15 +229,15 @@ func (pmem *PersistentMemoryEngine) open() error {
 	//	maxOpenFiles = pmem.cfg.MaxOpenFiles
 	//}
 
-	status := C.PmemOpen(&pmem.engine, goToCSlice([]byte(pmem.cfg.Dir)),
+	status := C.PmemOpen(&pmem.engine, goToCPmemSlice([]byte(pmem.cfg.Dir)),
 		C.PmemOptions{
 			//num_cpu:           C.int(rocksdbConcurrency),
-			must_exist:        C.bool(r.cfg.MustExist),
-			read_only:         C.bool(r.cfg.ReadOnly),
-			rocksdb_options:   goToCSlice([]byte(pmem.cfg.PmemOptions)),
-			extra_options:     goToCSlice(r.cfg.ExtraOptions),
+			must_exist:        C.bool(pmem.cfg.MustExist),
+			read_only:         C.bool(pmem.cfg.ReadOnly),
+			rocksdb_options:   goToCPmemSlice([]byte(pmem.cfg.PmemOptions)),
+			extra_options:     goToCPmemSlice(pmem.cfg.ExtraOptions),
 		})
-	if err := statusToError(status); err != nil {
+	if err := pmemStatusToError(status); err != nil {
 		return errors.Wrap(err, "could not open rocksdb instance")
 	}
 
@@ -265,7 +264,7 @@ func (pmem *PersistentMemoryEngine) Close() {
 
 	log.Infof(context.TODO(), "closing persistent memory engine instance at %q", pmem.cfg.Dir)
 	if pmem.engine != nil {
-		if err := statusToError(C.PmemClose(pmem.engine)); err != nil {
+		if err := pmemStatusToError(C.PmemClose(pmem.engine)); err != nil {
 			panic(err)
 		}
 		pmem.engine = nil
@@ -301,11 +300,11 @@ func (pmem *PersistentMemoryEngine) Put(key MVCCKey, value []byte) error {
 	return pmemPut(pmem.engine, key, value)
 }
 
-// Merge implements the RocksDB merge operator using the function goMergeInit
-// to initialize missing values and goMerge to merge the old and the given
+// Merge implements the RocksDB merge operator using the function goPmemMergeInit
+// to initialize missing values and goPmemMerge to merge the old and the given
 // value into a new value, which is then stored under key.
 // Currently 64-bit counter logic is implemented. See the documentation of
-// goMerge and goMergeInit for details.
+// goPmemMerge and goPmemMergeInit for details.
 //
 // The key and value byte slices may be reused safely. merge takes a copy
 // of them before returning.
@@ -367,7 +366,7 @@ func (pmem *PersistentMemoryEngine) ClearIterRange(iter Iterator, start, end MVC
 // Iterate iterates from start to end keys, invoking f on each
 // key/value pair. See engine.Iterate for details.
 func (pmem *PersistentMemoryEngine) Iterate(start, end MVCCKey, f func(MVCCKeyValue) (bool, error)) error {
-	return pmemIterate(pmem.engine, r, start, end, f)
+	return pmemIterate(pmem.engine, pmem, start, end, f)
 }
 
 // TODO(jeb) fill me in with accurate info from the pmem -- might be
@@ -389,7 +388,7 @@ func (pmem *PersistentMemoryEngine) ApproximateDiskBytes(from, to roachpb.Key) (
 	start := MVCCKey{Key: from}
 	end := MVCCKey{Key: to}
 	var result C.uint64_t
-	err := statusToError(C.PmemApproximateDiskBytes(pmem.engine, goToCKey(start), goToCKey(end), &result))
+	err := pmemStatusToError(C.PmemApproximateDiskBytes(pmem.engine, goToCPmemKey(start), goToCPmemKey(end), &result))
 	return uint64(result), err
 }
 
@@ -398,23 +397,23 @@ func (pmem *PersistentMemoryEngine) Flush() error {
 	return nil
 }
 
-// NewIterator returns an iterator over this rocksdb engine.
+// NewIterator returns an iterator over this pmem engine.
 func (pmem *PersistentMemoryEngine) NewIterator(opts IterOptions) Iterator {
-	return newPmemIterator(pmem.engine, opts, r, r)
+	return newPmemIterator(pmem.engine, opts, pmem, pmem)
 }
 
-// NewBatch returns a new batch wrapping this rocksdb engine.
+// NewBatch returns a new batch wrapping this pmem engine.
 func (pmem *PersistentMemoryEngine) NewBatch() Batch {
 	return newPmemBatch(pmem, false /* writeOnly */)
 }
 
-// NewWriteOnlyBatch returns a new write-only batch wrapping this rocksdb
+// NewWriteOnlyBatch returns a new write-only batch wrapping this pmem
 // engine.
 func (pmem *PersistentMemoryEngine) NewWriteOnlyBatch() Batch {
 	return newPmemBatch(pmem, true /* writeOnly */)
 }
 
-// GetStats retrieves stats from this engine's RocksDB instance and
+// GetStats retrieves stats from this engine's pmem instance and
 // returns it in a new instance of Stats.
 func (pmem *PersistentMemoryEngine) GetStats() (*Stats, error) {
 	return &Stats{
@@ -456,6 +455,7 @@ func (pmem *PersistentMemoryEngine) GetEncryptionRegistries() (*EncryptionRegist
 	return nil, errors.New("unsupported")
 }
 
+// TODO(jeb) is this necessary?
 // reusablePmemIterator wraps pmemIterator and allows reuse of an iterator
 // for the lifetime of a batch.
 type reusablePmemIterator struct {
@@ -504,15 +504,15 @@ func (r *distinctBatch) NewIterator(opts IterOptions) Iterator {
 	if opts.Prefix {
 		iter = &r.prefixIter
 	}
-	if iter.rocksDBIterator.iter == nil {
+	if iter.pmemIterator.iter == nil {
 		if pmem.writeOnly {
-			iter.rocksDBIterator.init(r.parent.rdb, opts, r, pmem.parent)
+			iter.pmemIterator.init(r.parent.rdb, opts, r, pmem.parent)
 		} else {
 			r.ensureBatch()
-			iter.rocksDBIterator.init(r.batch, opts, r, pmem.parent)
+			iter.pmemIterator.init(r.batch, opts, r, pmem.parent)
 		}
 	} else {
-		iter.rocksDBIterator.setOptions(opts)
+		iter.pmemIterator.setOptions(opts)
 	}
 	if iter.inuse {
 		panic("iterator already in use")
@@ -591,18 +591,18 @@ func (r *distinctBatch) LogLogicalOp(op MVCCLogicalOpType, details MVCCLogicalOp
 }
 
 func (r *distinctBatch) close() {
-	if i := &r.prefixIter.rocksDBIterator; i.iter != nil {
+	if i := &r.prefixIter.pmemIterator; i.iter != nil {
 		i.destroy()
 	}
-	if i := &r.normalIter.rocksDBIterator; i.iter != nil {
+	if i := &r.normalIter.pmemIterator; i.iter != nil {
 		i.destroy()
 	}
 }
 
-// batchIterator wraps rocksDBIterator and ensures that the buffered mutations
+// batchIterator wraps pmemIterator and ensures that the buffered mutations
 // in a batch are flushed before performing read operations.
 type batchIterator struct {
-	iter  rocksDBIterator
+	iter  pmemIterator
 	batch *rocksDBBatch
 }
 
@@ -704,7 +704,7 @@ func (r *batchIterator) UnsafeValue() []byte {
 	return pmem.iter.UnsafeValue()
 }
 
-func (r *batchIterator) getIter() *C.DBIterator {
+func (r *batchIterator) getIter() *C.PmemIterator {
 	return pmem.iter.iter
 }
 
@@ -724,255 +724,234 @@ func (r *reusableBatchIterator) Close() {
 	r.batch = nil
 }
 
+// TODO(jeb) wtf is this?!?!?
 type dbIteratorGetter interface {
-	getIter() *C.DBIterator
+	getIter() *C.PmemIterator
 }
 
-type rocksDBIterator struct {
-	parent *RocksDB
+type pmemIterator struct {
+	parent *PersistentMemoryEngine
 	engine Reader
-	iter   *C.DBIterator
+	// TODO(jeb) is has yet to be seen if we need a magical iterator from the pmem impl,
+	//  unlike what we need from rocks
+	iter   *C.PmemIterator
 	valid  bool
 	reseek bool
 	err    error
-	key    C.DBKey
-	value  C.DBSlice
-}
-
-// TODO(peter): Is this pool useful now that rocksDBBatch.NewIterator doesn't
-// allocate by returning internal pointers?
-var iterPool = sync.Pool{
-	New: func() interface{} {
-		return &rocksDBIterator{}
-	},
+	key    C.PmemKey
+	value  C.PmemSlice
 }
 
 // newRocksDBIterator returns a new iterator over the supplied RocksDB
 // instance. If snapshotHandle is not nil, uses the indicated snapshot.
-// The caller must call rocksDBIterator.Close() when finished with the
+// The caller must call pmemIterator.Close() when finished with the
 // iterator to free up resources.
-func newRocksDBIterator(
-	rdb *C.PmemEngine, opts IterOptions, engine Reader, parent *RocksDB,
+func newPmemIterator(
+	pmem *C.PmemEngine, opts IterOptions, engine Reader, parent *PersistentMemoryEngine,
 ) Iterator {
-	// In order to prevent content displacement, caching is disabled
-	// when performing scans. Any options set within the shared read
-	// options field that should be carried over needs to be set here
-	// as well.
-	r := iterPool.Get().(*rocksDBIterator)
-	r.init(rdb, opts, engine, parent)
-	return r
+	it := &pmemIterator{}
+	it.init(pmem, opts, engine, parent)
+	return it
 }
 
-func (r *rocksDBIterator) getIter() *C.DBIterator {
-	return pmem.iter
+func (it *pmemIterator) getIter() *C.PmemIterator {
+	return it.iter
 }
 
-func (r *rocksDBIterator) init(rdb *C.PmemEngine, opts IterOptions, engine Reader, parent *RocksDB) {
-	r.parent = parent
-	if debugIteratorLeak && pmem.parent != nil {
-		r.parent.iters.Lock()
-		r.parent.iters.m[r] = debug.Stack()
-		r.parent.iters.Unlock()
-	}
+func (it *pmemIterator) init(pmem *C.PmemEngine, opts IterOptions, engine Reader, parent *PersistentMemoryEngine) {
+	it.parent = parent
 
 	if !opts.Prefix && len(opts.UpperBound) == 0 && len(opts.LowerBound) == 0 {
 		panic("iterator must set prefix or upper bound or lower bound")
 	}
 
-	r.iter = C.DBNewIter(rdb, goToCIterOptions(opts))
+	it.iter = C.PmemNewIter(pmem, goToCPmemIterOptions(opts))
 	if pmem.iter == nil {
 		panic("unable to create iterator")
 	}
-	r.engine = engine
+	it.engine = engine
 }
 
-func (r *rocksDBIterator) setOptions(opts IterOptions) {
+func (it *pmemIterator) setOptions(opts IterOptions) {
 	if opts.MinTimestampHint != (hlc.Timestamp{}) || opts.MaxTimestampHint != (hlc.Timestamp{}) {
 		panic("iterator with timestamp hints cannot be reused")
 	}
 	if !opts.Prefix && len(opts.UpperBound) == 0 && len(opts.LowerBound) == 0 {
 		panic("iterator must set prefix or upper bound or lower bound")
 	}
-	C.DBIterSetLowerBound(r.iter, goToCKey(MakeMVCCMetadataKey(opts.LowerBound)))
-	C.DBIterSetUpperBound(r.iter, goToCKey(MakeMVCCMetadataKey(opts.UpperBound)))
+	C.PmemIterSetLowerBound(it.iter, goToCPmemKey(MakeMVCCMetadataKey(opts.LowerBound)))
+	C.PmemIterSetUpperBound(it.iter, goToCPmemKey(MakeMVCCMetadataKey(opts.UpperBound)))
 }
 
-func (r *rocksDBIterator) checkEngineOpen() {
-	if pmem.engine.Closed() {
+func (it *pmemIterator) checkEngineOpen() {
+	if it.engine.Closed() {
 		panic("iterator used after backing engine closed")
 	}
 }
 
-func (r *rocksDBIterator) destroy() {
-	if debugIteratorLeak && pmem.parent != nil {
-		r.parent.iters.Lock()
-		delete(r.parent.iters.m, r)
-		r.parent.iters.Unlock()
-	}
-	C.DBIterDestroy(r.iter)
-	*r = rocksDBIterator{}
+func (it *pmemIterator) destroy() {
+	C.PmemIterDestroy(it.iter)
+	*it = pmemIterator{}
 }
 
 // The following methods implement the Iterator interface.
 
-func (r *rocksDBIterator) Stats() IteratorStats {
-	stats := C.DBIterStats(r.iter)
+func (it *pmemIterator) Stats() IteratorStats {
 	return IteratorStats{
-		TimeBoundNumSSTs:           int(C.ulonglong(stats.timebound_num_ssts)),
-		InternalDeleteSkippedCount: int(C.ulonglong(stats.internal_delete_skipped_count)),
+		TimeBoundNumSSTs:           0,
+		InternalDeleteSkippedCount: 0,
 	}
 }
 
-func (r *rocksDBIterator) Close() {
-	r.destroy()
-	iterPool.Put(r)
+func (it *pmemIterator) Close() {
+	it.destroy()
 }
 
-func (r *rocksDBIterator) Seek(key MVCCKey) {
-	r.checkEngineOpen()
+func (it *pmemIterator) Seek(key MVCCKey) {
+	it.checkEngineOpen()
 	if len(key.Key) == 0 {
 		// start=Key("") needs special treatment since we need
 		// to access start[0] in an explicit seek.
-		r.setState(C.DBIterSeekToFirst(r.iter))
+		it.setState(C.PmemIterSeekToFirst(it.iter))
 	} else {
 		// We can avoid seeking if we're already at the key we seek.
-		if pmem.valid && !r.reseek && key.Equal(r.UnsafeKey()) {
+		if it.valid && !it.reseek && key.Equal(it.UnsafeKey()) {
 			return
 		}
-		r.setState(C.DBIterSeek(r.iter, goToCKey(key)))
+		it.setState(C.PmemIterSeek(it.iter, goToCPmemKey(key)))
 	}
 }
 
-func (r *rocksDBIterator) SeekReverse(key MVCCKey) {
-	r.checkEngineOpen()
+func (it *pmemIterator) SeekReverse(key MVCCKey) {
+	it.checkEngineOpen()
 	if len(key.Key) == 0 {
-		r.setState(C.DBIterSeekToLast(r.iter))
+		it.setState(C.PmemIterSeekToLast(it.iter))
 	} else {
 		// We can avoid seeking if we're already at the key we seek.
-		if pmem.valid && !r.reseek && key.Equal(r.UnsafeKey()) {
+		if it.valid && !it.reseek && key.Equal(it.UnsafeKey()) {
 			return
 		}
-		r.setState(C.DBIterSeek(r.iter, goToCKey(key)))
-		// Maybe the key sorts after the last key in RocksDB.
-		if ok, _ := pmem.Valid(); !ok {
-			r.setState(C.DBIterSeekToLast(r.iter))
+		it.setState(C.PmemIterSeek(it.iter, goToCPmemKey(key)))
+		// Maybe the key sorts after the last key in pmem
+		if ok, _ := it.Valid(); !ok {
+			it.iter(C.PmemIterSeekToLast(it.iter))
 		}
-		if ok, _ := pmem.Valid(); !ok {
+		if ok, _ := it.Valid(); !ok {
 			return
 		}
 		// Make sure the current key is <= the provided key.
-		if key.Less(r.UnsafeKey()) {
-			r.Prev()
+		if key.Less(it.UnsafeKey()) {
+			it.Prev()
 		}
 	}
 }
 
-func (r *rocksDBIterator) Valid() (bool, error) {
-	return pmem.valid, pmem.err
+func (it *pmemIterator) Valid() (bool, error) {
+	return it.valid, it.err
 }
 
-func (r *rocksDBIterator) Next() {
-	r.checkEngineOpen()
-	r.setState(C.DBIterNext(r.iter, C.bool(false) /* skip_current_key_versions */))
+func (it *pmemIterator) Next() {
+	it.checkEngineOpen()
+	it.setState(C.PmemIterNext(it.iter, C.bool(false) /* skip_current_key_versions */))
 }
 
-func (r *rocksDBIterator) Prev() {
-	r.checkEngineOpen()
-	r.setState(C.DBIterPrev(r.iter, C.bool(false) /* skip_current_key_versions */))
+func (it *pmemIterator) Prev() {
+	it.checkEngineOpen()
+	it.setState(C.PmemIterPrev(it.iter, C.bool(false) /* skip_current_key_versions */))
 }
 
-func (r *rocksDBIterator) NextKey() {
-	r.checkEngineOpen()
-	r.setState(C.DBIterNext(r.iter, C.bool(true) /* skip_current_key_versions */))
+func (it *pmemIterator) NextKey() {
+	it.checkEngineOpen()
+	it.setState(C.PmemIterNext(it.iter, C.bool(true) /* skip_current_key_versions */))
 }
 
-func (r *rocksDBIterator) PrevKey() {
-	r.checkEngineOpen()
-	r.setState(C.DBIterPrev(r.iter, C.bool(true) /* skip_current_key_versions */))
+func (it *pmemIterator) PrevKey() {
+	it.checkEngineOpen()
+	it.setState(C.PmemIterPrev(it.iter, C.bool(true) /* skip_current_key_versions */))
 }
 
-func (r *rocksDBIterator) Key() MVCCKey {
-	// The data returned by rocksdb_iter_{key,value} is not meant to be
+func (it *pmemIterator) Key() MVCCKey {
+	// The data returned by pmem_iter_{key,value} is not meant to be
 	// freed by the client. It is a direct reference to the data managed
 	// by the iterator, so it is copied instead of freed.
-	return cToGoKey(r.key)
+	return cPmemToGoKey(it.key)
 }
 
-func (r *rocksDBIterator) Value() []byte {
-	return cSliceToGoBytes(r.value)
+func (it *pmemIterator) Value() []byte {
+	return cPmemSliceToGoBytes(it.value)
 }
 
-func (r *rocksDBIterator) ValueProto(msg protoutil.Message) error {
+func (it *pmemIterator) ValueProto(msg protoutil.Message) error {
 	if pmem.value.len <= 0 {
 		return nil
 	}
-	return protoutil.Unmarshal(r.UnsafeValue(), msg)
+	return protoutil.Unmarshal(it.UnsafeValue(), msg)
 }
 
-func (r *rocksDBIterator) UnsafeKey() MVCCKey {
-	return cToUnsafeGoKey(r.key)
+func (it *pmemIterator) UnsafeKey() MVCCKey {
+	return cPmemToUnsafeGoKey(it.key)
 }
 
-func (r *rocksDBIterator) UnsafeValue() []byte {
-	return cSliceToUnsafeGoBytes(r.value)
+func (it *pmemIterator) UnsafeValue() []byte {
+	return cPmemSliceToUnsafeGoBytes(it.value)
 }
 
-func (r *rocksDBIterator) clearState() {
-	r.valid = false
-	r.reseek = true
-	r.key = C.DBKey{}
-	r.value = C.DBSlice{}
-	r.err = nil
+func (it *pmemIterator) clearState() {
+	it.valid = false
+	it.reseek = true
+	it.key = C.PmemKey{}
+	it.value = C.PmemSlice{}
+	it.err = nil
 }
 
-func (r *rocksDBIterator) setState(state C.DBIterState) {
-	r.valid = bool(state.valid)
-	r.reseek = false
-	r.key = state.key
-	r.value = state.value
-	r.err = statusToError(state.status)
+func (it *pmemIterator) setState(state C.PmemIterState) {
+	it.valid = bool(state.valid)
+	it.reseek = false
+	it.key = state.key
+	it.value = state.value
+	it.err = pmemStatusToError(state.status)
 }
 
-func (r *rocksDBIterator) ComputeStats(
+func (it *pmemIterator) ComputeStats(
 	start, end MVCCKey, nowNanos int64,
 ) (enginepb.MVCCStats, error) {
-	r.clearState()
-	result := C.MVCCComputeStats(r.iter, goToCKey(start), goToCKey(end), C.int64_t(nowNanos))
-	stats, err := cStatsToGoStats(result, nowNanos)
+	it.clearState()
+	result := C.PmemMVCCComputeStats(it.iter, goToCPmemKey(start), goToCPmemKey(end), C.int64_t(nowNanos))
+	stats, err := cPmemStatsToGoStats(result, nowNanos)
 	if util.RaceEnabled {
 		// If we've come here via batchIterator, then flushMutations (which forces
-		// reseek) was called just before C.MVCCComputeStats. Set it here as well
+		// reseek) was called just before C.PmemMVCCComputeStats. Set it here as well
 		// to match.
-		r.reseek = true
-		// C.MVCCComputeStats and ComputeStatsGo must behave identically.
+		it.reseek = true
+		// C.PmemMVCCComputeStats and ComputeStatsGo must behave identically.
 		// There are unit tests to ensure that they return the same result, but
 		// as an additional check, use the race builds to check any edge cases
 		// that the tests may miss.
-		verifyStats, verifyErr := ComputeStatsGo(r, start, end, nowNanos)
+		verifyStats, verifyErr := ComputeStatsGo(it, start, end, nowNanos)
 		if (err != nil) != (verifyErr != nil) {
-			panic(fmt.Sprintf("C.MVCCComputeStats differed from ComputeStatsGo: err %v vs %v", err, verifyErr))
+			panic(fmt.Sprintf("C.PmemMVCCComputeStats differed from ComputeStatsGo: err %v vs %v", err, verifyErr))
 		}
 		if !stats.Equal(verifyStats) {
-			panic(fmt.Sprintf("C.MVCCComputeStats differed from ComputeStatsGo: stats %+v vs %+v", stats, verifyStats))
+			panic(fmt.Sprintf("C.PmemMVCCComputeStats differed from ComputeStatsGo: stats %+v vs %+v", stats, verifyStats))
 		}
 	}
 	return stats, err
 }
 
-func (r *rocksDBIterator) FindSplitKey(
+func (it *pmemIterator) FindSplitKey(
 	start, end, minSplitKey MVCCKey, targetSize int64,
 ) (MVCCKey, error) {
-	var splitKey C.DBString
-	r.clearState()
-	status := C.MVCCFindSplitKey(r.iter, goToCKey(start), goToCKey(end), goToCKey(minSplitKey),
+	var splitKey C.PmemString
+	it.clearState()
+	status := C.PmemMVCCFindSplitKey(it.iter, goToCPmemKey(start), goToCPmemKey(end), goToCPmemKey(minSplitKey),
 		C.int64_t(targetSize), &splitKey)
-	if err := statusToError(status); err != nil {
+	if err := pmemStatusToError(status); err != nil {
 		return MVCCKey{}, err
 	}
-	return MVCCKey{Key: cStringToGoBytes(splitKey)}, nil
+	return MVCCKey{Key: cPmemStringToGoBytes(splitKey)}, nil
 }
 
-func (r *rocksDBIterator) MVCCGet(
+func (it *pmemIterator) MVCCGet(
 	key roachpb.Key, timestamp hlc.Timestamp, opts MVCCGetOptions,
 ) (*roachpb.Value, *roachpb.Intent, error) {
 	if opts.Inconsistent && opts.Txn != nil {
@@ -982,20 +961,20 @@ func (r *rocksDBIterator) MVCCGet(
 		return nil, nil, emptyKeyError()
 	}
 
-	r.clearState()
-	state := C.MVCCGet(
-		r.iter, goToCSlice(key), goToCTimestamp(timestamp), goToCTxn(opts.Txn),
+	it.clearState()
+	state := C.PmemMVCCGet(
+		it.iter, goToCPmemSlice(key), goToCPmemTimestamp(timestamp), goToCTxn(opts.Txn),
 		C.bool(opts.Inconsistent), C.bool(opts.Tombstones), C.bool(opts.IgnoreSequence),
 	)
 
-	if err := statusToError(state.status); err != nil {
+	if err := pmemStatusToError(state.status); err != nil {
 		return nil, nil, err
 	}
-	if err := uncertaintyToError(timestamp, state.uncertainty_timestamp, opts.Txn); err != nil {
+	if err := pmemUncertaintyToError(timestamp, state.uncertainty_timestamp, opts.Txn); err != nil {
 		return nil, nil, err
 	}
 
-	intents, err := buildScanIntents(cSliceToGoBytes(state.intents))
+	intents, err := buildScanIntents(cPmemSliceToGoBytes(state.intents))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1022,7 +1001,7 @@ func (r *rocksDBIterator) MVCCGet(
 	}
 
 	// Extract the value from the batch data.
-	repr := copyFromSliceVector(state.data.bufs, state.data.len)
+	repr := copyFromPmemSliceVector(state.data.bufs, state.data.len)
 	mvccKey, rawValue, _, err := MVCCScanDecodeKeyValue(repr)
 	if err != nil {
 		return nil, nil, err
@@ -1034,7 +1013,7 @@ func (r *rocksDBIterator) MVCCGet(
 	return value, intent, nil
 }
 
-func (r *rocksDBIterator) MVCCScan(
+func (it *pmemIterator) MVCCScan(
 	start, end roachpb.Key, max int64, timestamp hlc.Timestamp, opts MVCCScanOptions,
 ) (kvData []byte, numKVs int64, resumeSpan *roachpb.Span, intents []roachpb.Intent, err error) {
 	if opts.Inconsistent && opts.Txn != nil {
@@ -1048,26 +1027,26 @@ func (r *rocksDBIterator) MVCCScan(
 		return nil, 0, resumeSpan, nil, nil
 	}
 
-	r.clearState()
-	state := C.MVCCScan(
-		r.iter, goToCSlice(start), goToCSlice(end),
-		goToCTimestamp(timestamp), C.int64_t(max),
+	it.clearState()
+	state := C.PmemMVCCScan(
+		it.iter, goToCPmemSlice(start), goToCPmemSlice(end),
+		goToCPmemTimestamp(timestamp), C.int64_t(max),
 		goToCTxn(opts.Txn), C.bool(opts.Inconsistent),
 		C.bool(opts.Reverse), C.bool(opts.Tombstones),
 		C.bool(opts.IgnoreSequence),
 	)
 
-	if err := statusToError(state.status); err != nil {
+	if err := pmemStatusToError(state.status); err != nil {
 		return nil, 0, nil, nil, err
 	}
-	if err := uncertaintyToError(timestamp, state.uncertainty_timestamp, opts.Txn); err != nil {
+	if err := pmemUncertaintyToError(timestamp, state.uncertainty_timestamp, opts.Txn); err != nil {
 		return nil, 0, nil, nil, err
 	}
 
-	kvData = copyFromSliceVector(state.data.bufs, state.data.len)
+	kvData = copyFromPmemSliceVector(state.data.bufs, state.data.len)
 	numKVs = int64(state.data.count)
 
-	if resumeKey := cSliceToGoBytes(state.resume_key); resumeKey != nil {
+	if resumeKey := cPmemSliceToGoBytes(state.resume_key); resumeKey != nil {
 		if opts.Reverse {
 			resumeSpan = &roachpb.Span{Key: start, EndKey: roachpb.Key(resumeKey).Next()}
 		} else {
@@ -1075,7 +1054,7 @@ func (r *rocksDBIterator) MVCCScan(
 		}
 	}
 
-	intents, err = buildScanIntents(cSliceToGoBytes(state.intents))
+	intents, err = buildScanIntents(cPmemSliceToGoBytes(state.intents))
 	if err != nil {
 		return nil, 0, nil, nil, err
 	}
@@ -1088,31 +1067,31 @@ func (r *rocksDBIterator) MVCCScan(
 	return kvData, numKVs, resumeSpan, intents, nil
 }
 
-func (r *rocksDBIterator) SetUpperBound(key roachpb.Key) {
-	C.DBIterSetUpperBound(r.iter, goToCKey(MakeMVCCMetadataKey(key)))
+func (it *pmemIterator) SetUpperBound(key roachpb.Key) {
+	C.PmemIterSetUpperBound(it.iter, goToCPmemKey(MakeMVCCMetadataKey(key)))
 }
 
-func copyFromSliceVector(bufs *C.DBSlice, len C.int32_t) []byte {
+func copyFromPmemSliceVector(bufs *C.PmemSlice, len C.int32_t) []byte {
 	if bufs == nil {
 		return nil
 	}
 
 	// Interpret the C pointer as a pointer to a Go array, then slice.
-	slices := (*[1 << 20]C.DBSlice)(unsafe.Pointer(bufs))[:len:len]
+	slices := (*[1 << 20]C.PmemSlice)(unsafe.Pointer(bufs))[:len:len]
 	neededBytes := 0
 	for i := range slices {
 		neededBytes += int(slices[i].len)
 	}
 	data := nonZeroingMakeByteSlice(neededBytes)[:0]
 	for i := range slices {
-		data = append(data, cSliceToUnsafeGoBytes(slices[i])...)
+		data = append(data, cPmemSliceToUnsafeGoBytes(slices[i])...)
 	}
 	return data
 }
 
-func cStatsToGoStats(stats C.MVCCStatsResult, nowNanos int64) (enginepb.MVCCStats, error) {
+func cPmemStatsToGoStats(stats C.MVCCStatsResult, nowNanos int64) (enginepb.MVCCStats, error) {
 	ms := enginepb.MVCCStats{}
-	if err := statusToError(stats.status); err != nil {
+	if err := pmemStatusToError(stats.status); err != nil {
 		return ms, err
 	}
 	ms.ContainsEstimates = false
@@ -1132,39 +1111,39 @@ func cStatsToGoStats(stats C.MVCCStatsResult, nowNanos int64) (enginepb.MVCCStat
 	return ms, nil
 }
 
-// goToCSlice converts a go byte slice to a DBSlice. Note that this is
+// goToCPmemSlice converts a go byte slice to a DBSlice. Note that this is
 // potentially dangerous as the DBSlice holds a reference to the go
 // byte slice memory that the Go GC does not know about. This method
 // is only intended for use in converting arguments to C
 // functions. The C function must copy any data that it wishes to
 // retain once the function returns.
-func goToCSlice(b []byte) C.DBSlice {
+func goToCPmemSlice(b []byte) C.PmemSlice {
 	if len(b) == 0 {
-		return C.DBSlice{data: nil, len: 0}
+		return C.PmemSlice{data: nil, len: 0}
 	}
-	return C.DBSlice{
+	return C.PmemSlice{
 		data: (*C.char)(unsafe.Pointer(&b[0])),
 		len:  C.int(len(b)),
 	}
 }
 
-func goToCKey(key MVCCKey) C.DBKey {
-	return C.DBKey{
-		key:       goToCSlice(key.Key),
+func goToCPmemKey(key MVCCKey) C.PmemKey {
+	return C.PmemKey{
+		key:       goToCPmemSlice(key.Key),
 		wall_time: C.int64_t(key.Timestamp.WallTime),
 		logical:   C.int32_t(key.Timestamp.Logical),
 	}
 }
 
-func cToGoKey(key C.DBKey) MVCCKey {
-	// When converting a C.DBKey to an MVCCKey, give the underlying slice an
+func cPmemToGoKey(key C.PmemKey) MVCCKey {
+	// When converting a C.PmemKey to an MVCCKey, give the underlying slice an
 	// extra byte of capacity in anticipation of roachpb.Key.Next() being
 	// called. The extra byte is trivial extra space, but allows callers to avoid
 	// an allocation and copy when calling roachpb.Key.Next(). Note that it is
 	// important that the extra byte contain the value 0 in order for the
 	// roachpb.Key.Next() fast-path to be invoked. This is true for the code
 	// below because make() zero initializes all of the bytes.
-	unsafeKey := cSliceToUnsafeGoBytes(key.key)
+	unsafeKey := cPmemSliceToUnsafeGoBytes(key.key)
 	safeKey := make([]byte, len(unsafeKey), len(unsafeKey)+1)
 	copy(safeKey, unsafeKey)
 
@@ -1177,9 +1156,9 @@ func cToGoKey(key C.DBKey) MVCCKey {
 	}
 }
 
-func cToUnsafeGoKey(key C.DBKey) MVCCKey {
+func cPmemToUnsafeGoKey(key C.PmemKey) MVCCKey {
 	return MVCCKey{
-		Key: cSliceToUnsafeGoBytes(key.key),
+		Key: cPmemSliceToUnsafeGoBytes(key.key),
 		Timestamp: hlc.Timestamp{
 			WallTime: int64(key.wall_time),
 			Logical:  int32(key.logical),
@@ -1187,7 +1166,7 @@ func cToUnsafeGoKey(key C.DBKey) MVCCKey {
 	}
 }
 
-func cStringToGoString(s C.DBString) string {
+func cPmemStringToGoString(s C.PmemString) string {
 	if s.data == nil {
 		return ""
 	}
@@ -1196,7 +1175,7 @@ func cStringToGoString(s C.DBString) string {
 	return result
 }
 
-func cStringToGoBytes(s C.DBString) []byte {
+func cPmemStringToGoBytes(s C.PmemString) []byte {
 	if s.data == nil {
 		return nil
 	}
@@ -1205,14 +1184,14 @@ func cStringToGoBytes(s C.DBString) []byte {
 	return result
 }
 
-func cSliceToGoBytes(s C.DBSlice) []byte {
+func cPmemSliceToGoBytes(s C.PmemSlice) []byte {
 	if s.data == nil {
 		return nil
 	}
 	return gobytes(unsafe.Pointer(s.data), int(s.len))
 }
 
-func cSliceToUnsafeGoBytes(s C.DBSlice) []byte {
+func cPmemSliceToUnsafeGoBytes(s C.PmemSlice) []byte {
 	if s.data == nil {
 		return nil
 	}
@@ -1220,44 +1199,44 @@ func cSliceToUnsafeGoBytes(s C.DBSlice) []byte {
 	return (*[maxArrayLen]byte)(unsafe.Pointer(s.data))[:s.len:s.len]
 }
 
-func goToCTimestamp(ts hlc.Timestamp) C.DBTimestamp {
-	return C.DBTimestamp{
+func goToCPmemTimestamp(ts hlc.Timestamp) C.PmemTimestamp {
+	return C.PmemTimestamp{
 		wall_time: C.int64_t(ts.WallTime),
 		logical:   C.int32_t(ts.Logical),
 	}
 }
 
-func goToCTxn(txn *roachpb.Transaction) C.DBTxn {
-	var r C.DBTxn
+func goToCPmemTxn(txn *roachpb.Transaction) C.PmemTxn {
+	var r C.PmemTxn
 	if txn != nil {
-		r.id = goToCSlice(txn.ID.GetBytes())
+		r.id = goToCPmemSlice(txn.ID.GetBytes())
 		r.epoch = C.uint32_t(txn.Epoch)
 		r.sequence = C.int32_t(txn.Sequence)
-		r.max_timestamp = goToCTimestamp(txn.MaxTimestamp)
+		r.max_timestamp = goToCPmemTimestamp(txn.MaxTimestamp)
 	}
 	return r
 }
 
-func goToCIterOptions(opts IterOptions) C.DBIterOptions {
-	return C.DBIterOptions{
+func goToCPmemIterOptions(opts IterOptions) C.PmemIterOptions {
+	return C.PmemIterOptions{
 		prefix:             C.bool(opts.Prefix),
-		lower_bound:        goToCKey(MakeMVCCMetadataKey(opts.LowerBound)),
-		upper_bound:        goToCKey(MakeMVCCMetadataKey(opts.UpperBound)),
-		min_timestamp_hint: goToCTimestamp(opts.MinTimestampHint),
-		max_timestamp_hint: goToCTimestamp(opts.MaxTimestampHint),
+		lower_bound:        goToCPmemKey(MakeMVCCMetadataKey(opts.LowerBound)),
+		upper_bound:        goToCPmemKey(MakeMVCCMetadataKey(opts.UpperBound)),
+		min_timestamp_hint: goToCPmemTimestamp(opts.MinTimestampHint),
+		max_timestamp_hint: goToCPmemTimestamp(opts.MaxTimestampHint),
 		with_stats:         C.bool(opts.WithStats),
 	}
 }
 
-func statusToError(s C.DBStatus) error {
+func pmemStatusToError(s C.PmemStatus) error {
 	if s.data == nil {
 		return nil
 	}
-	return &RocksDBError{msg: cStringToGoString(s)}
+	return &RocksDBError{msg: cPmemStringToGoString(s)}
 }
 
-func uncertaintyToError(
-	readTS hlc.Timestamp, existingTS C.DBTimestamp, txn *roachpb.Transaction,
+func pmemUncertaintyToError(
+	readTS hlc.Timestamp, existingTS C.PmemTimestamp, txn *roachpb.Transaction,
 ) error {
 	if existingTS.wall_time != 0 || existingTS.logical != 0 {
 		return roachpb.NewReadWithinUncertaintyIntervalError(
@@ -1270,34 +1249,30 @@ func uncertaintyToError(
 	return nil
 }
 
-// goMerge takes existing and update byte slices that are expected to
+// goPmemMerge takes existing and update byte slices that are expected to
 // be marshaled roachpb.Values and merges the two values returning a
 // marshaled roachpb.Value or an error.
-func goMerge(existing, update []byte) ([]byte, error) {
-	var result C.DBString
-	status := C.DBMergeOne(goToCSlice(existing), goToCSlice(update), &result)
+func goPmemMerge(existing, update []byte) ([]byte, error) {
+	var result C.PmemString
+	status := C.PmemMergeOne(goToCPmemSlice(existing), goToCPmemSlice(update), &result)
 	if status.data != nil {
 		return nil, errors.Errorf("%s: existing=%q, update=%q",
-			cStringToGoString(status), existing, update)
+			cPmemStringToGoString(status), existing, update)
 	}
-	return cStringToGoBytes(result), nil
+	return cPmemStringToGoBytes(result), nil
 }
 
-// goPartialMerge takes existing and update byte slices that are expected to
+// goPmemPartialMerge takes existing and update byte slices that are expected to
 // be marshaled roachpb.Values and performs a partial merge using C++ code,
 // marshaled roachpb.Value or an error.
-func goPartialMerge(existing, update []byte) ([]byte, error) {
-	var result C.DBString
-	status := C.DBPartialMergeOne(goToCSlice(existing), goToCSlice(update), &result)
+func goPmemPartialMerge(existing, update []byte) ([]byte, error) {
+	var result C.PmemString
+	status := C.PmemPartialMergeOne(goToCPmemSlice(existing), goToCPmemSlice(update), &result)
 	if status.data != nil {
 		return nil, errors.Errorf("%s: existing=%q, update=%q",
-			cStringToGoString(status), existing, update)
+			cPmemStringToGoString(status), existing, update)
 	}
-	return cStringToGoBytes(result), nil
-}
-
-func emptyKeyError() error {
-	return errors.Errorf("attempted access to empty key")
+	return cPmemStringToGoBytes(result), nil
 }
 
 func pmemPut(rdb *C.PmemEngine, key MVCCKey, value []byte) error {
@@ -1308,7 +1283,7 @@ func pmemPut(rdb *C.PmemEngine, key MVCCKey, value []byte) error {
 	// *Put, *Get, and *Delete call memcpy() (by way of MemTable::Add)
 	// when called, so we do not need to worry about these byte slices
 	// being reclaimed by the GC.
-	return statusToError(C.PmemPut(rdb, goToCKey(key), goToCSlice(value)))
+	return pmemStatusToError(C.PmemPut(rdb, goToCPmemKey(key), goToCPmemSlice(value)))
 }
 
 func pmemMerge(rdb *C.PmemEngine, key MVCCKey, value []byte) error {
@@ -1319,11 +1294,11 @@ func pmemMerge(rdb *C.PmemEngine, key MVCCKey, value []byte) error {
 	// DBMerge calls memcpy() (by way of MemTable::Add)
 	// when called, so we do not need to worry about these byte slices being
 	// reclaimed by the GC.
-	return statusToError(C.PmemMerge(rdb, goToCKey(key), goToCSlice(value)))
+	return pmemStatusToError(C.PmemMerge(rdb, goToCPmemKey(key), goToCPmemSlice(value)))
 }
 
 func pmemApplyBatchRepr(rdb *C.PmemEngine, repr []byte, sync bool) error {
-	return statusToError(C.PmemApplyBatchRepr(rdb, goToCSlice(repr), C.bool(sync)))
+	return pmemStatusToError(C.PmemApplyBatchRepr(rdb, goToCPmemSlice(repr), C.bool(sync)))
 }
 
 // dbGet returns the value for the given key.
@@ -1331,12 +1306,12 @@ func pmemGet(rdb *C.PmemEngine, key MVCCKey) ([]byte, error) {
 	if len(key.Key) == 0 {
 		return nil, emptyKeyError()
 	}
-	var result C.DBString
-	err := statusToError(C.PmemGet(rdb, goToCKey(key), &result))
+	var result C.PmemString
+	err := pmemStatusToError(C.PmemGet(rdb, goToCPmemKey(key), &result))
 	if err != nil {
 		return nil, err
 	}
-	return cStringToGoBytes(result), nil
+	return cPmemStringToGoBytes(result), nil
 }
 
 func pmemGetProto(
@@ -1346,8 +1321,8 @@ func pmemGetProto(
 		err = emptyKeyError()
 		return
 	}
-	var result C.DBString
-	if err = statusToError(C.PmemGet(rdb, goToCKey(key), &result)); err != nil {
+	var result C.PmemString
+	if err = pmemStatusToError(C.PmemGet(rdb, goToCPmemKey(key), &result)); err != nil {
 		return
 	}
 	if result.len <= 0 {
@@ -1359,7 +1334,7 @@ func pmemGetProto(
 		// Make a byte slice that is backed by result.data. This slice
 		// cannot live past the lifetime of this method, but we're only
 		// using it to unmarshal the roachpb.
-		data := cSliceToUnsafeGoBytes(C.DBSlice(result))
+		data := cPmemSliceToUnsafeGoBytes(C.PmemSlice(result))
 		err = protoutil.Unmarshal(data, msg)
 	}
 	C.free(unsafe.Pointer(result.data))
@@ -1372,18 +1347,18 @@ func pmemClear(rdb *C.PmemEngine, key MVCCKey) error {
 	if len(key.Key) == 0 {
 		return emptyKeyError()
 	}
-	return statusToError(C.PmemDelete(rdb, goToCKey(key)))
+	return pmemStatusToError(C.PmemDelete(rdb, goToCPmemKey(key)))
 }
 
 func pmemSingleClear(rdb *C.PmemEngine, key MVCCKey) error {
 	if len(key.Key) == 0 {
 		return emptyKeyError()
 	}
-	return statusToError(C.PmemSingleDelete(rdb, goToCKey(key)))
+	return pmemStatusToError(C.PmemSingleDelete(rdb, goToCPmemKey(key)))
 }
 
 func pmemClearRange(rdb *C.PmemEngine, start, end MVCCKey) error {
-	if err := statusToError(C.PmemDeleteRange(rdb, goToCKey(start), goToCKey(end))); err != nil {
+	if err := pmemStatusToError(C.PmemDeleteRange(rdb, goToCPmemKey(start), goToCPmemKey(end))); err != nil {
 		return err
 	}
 
@@ -1419,7 +1394,7 @@ func pmemClearIterRange(rdb *C.PmemEngine, iter Iterator, start, end MVCCKey) er
 	if !ok {
 		return errors.Errorf("%T is not a RocksDB iterator", iter)
 	}
-	return statusToError(C.PmemDeleteIterRange(rdb, getter.getIter(), goToCKey(start), goToCKey(end)))
+	return pmemStatusToError(C.PmemDeleteIterRange(rdb, getter.getIter(), goToCPmemKey(start), goToCPmemKey(end)))
 }
 
 func pmemIterate(
@@ -1459,12 +1434,7 @@ func (pmem *PersistentMemoryEngine) PreIngestDelay(ctx context.Context) {
 	// nop
 }
 
-// WriteFile writes data to a file in this RocksDB's env.
-func (pmem *PersistentMemoryEngine) WriteFile(filename string, data []byte) error {
-	return statusToError(C.DBEnvWriteFile(pmem.engine, goToCSlice([]byte(filename)), goToCSlice(data)))
-}
-
-func (pmem *PersistentMemoryEngine) OpenFile(filename string) (DBFile, error) {
+	func (pmem *PersistentMemoryEngine) OpenFile(filename string) (DBFile, error) {
 	panic("not supported in PoC")
 }
 
@@ -1496,12 +1466,12 @@ func (pmem *PersistentMemoryEngine) NewSnapshot() Reader {
 
 // NewSortedDiskMap implements the MapProvidingEngine interface.
 func (pmem *PersistentMemoryEngine) NewSortedDiskMap() diskmap.SortedDiskMap {
-	return NewRocksDBMap(r)
+	return NewPmemMap(pmem)
 }
 
 // NewSortedDiskMultiMap implements the MapProvidingEngine interface.
 func (pmem *PersistentMemoryEngine) NewSortedDiskMultiMap() diskmap.SortedDiskMap {
-	return NewRocksDBMultiMap(r)
+	return NewPmemMultiMap(pmem)
 }
 
 // IsValidSplitKey returns whether the key is a valid split key. Certain key
@@ -1509,39 +1479,5 @@ func (pmem *PersistentMemoryEngine) NewSortedDiskMultiMap() diskmap.SortedDiskMa
 // chosen within any of these ranges are considered invalid. And a split key
 // equal to Meta2KeyMax (\x03\xff\xff) is considered invalid.
 func IsValidSplitKey(key roachpb.Key) bool {
-	return bool(C.MVCCIsValidSplitKey(goToCSlice(key)))
-}
-
-// lockFile sets a lock on the specified file using RocksDB's file locking interface.
-func lockFile(filename string) (C.DBFileLock, error) {
-	var lock C.DBFileLock
-	// C.DBLockFile mutates its argument. `lock, statusToError(...)`
-	// happens to work in gc, but does not work in gccgo.
-	//
-	// See https://github.com/golang/go/issues/23188.
-	err := statusToError(C.DBLockFile(goToCSlice([]byte(filename)), &lock))
-	return lock, err
-}
-
-// unlockFile unlocks the file asscoiated with the specified lock and GCs any allocated memory for the lock.
-func unlockFile(lock C.DBFileLock) error {
-	return statusToError(C.DBUnlockFile(lock))
-}
-
-// MVCCScanDecodeKeyValue decodes a key/value pair returned in an MVCCScan
-// "batch" (this is not the RocksDB batch repr format), returning both the
-// key/value and the suffix of data remaining in the batch.
-func MVCCScanDecodeKeyValue(repr []byte) (key MVCCKey, value []byte, orepr []byte, err error) {
-	k, ts, value, orepr, err := enginepb.ScanDecodeKeyValue(repr)
-	return MVCCKey{k, ts}, value, orepr, err
-}
-
-func notFoundErrOrDefault(err error) error {
-	errStr := err.Error()
-	if strings.Contains(errStr, "No such file or directory") ||
-		strings.Contains(errStr, "File not found") ||
-		strings.Contains(errStr, "The system cannot find the path specified") {
-		return os.ErrNotExist
-	}
-	return err
+	return bool(C.MVCCIsValidSplitKey(goToCPmemSlice(key)))
 }

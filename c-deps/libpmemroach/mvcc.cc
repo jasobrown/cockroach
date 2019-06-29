@@ -13,8 +13,6 @@
 // permissions and limitations under the License.
 
 #include "mvcc.h"
-#include "comparator.h"
-#include "encoding.h"
 #include "keys.h"
 
 using namespace cockroach;
@@ -66,9 +64,9 @@ inline int64_t age_factor(int64_t fromNS, int64_t toNS) {
 // should be taken as a hint but determined by the max timestamp encountered.
 //
 // This implementation must match engine.ComputeStatsGo.
-MVCCStatsResult MVCCComputeStatsInternal(::rocksdb::Iterator* const iter_rep, PmemKey start,
+PmemMVCCStatsResult PmemMVCCComputeStatsInternal(::rocksdb::Iterator* const iter_rep, PmemKey start,
                                          PmemKey end, int64_t now_nanos) {
-  MVCCStatsResult stats;
+  PmemMVCCStatsResult stats;
   memset(&stats, 0, sizeof(stats));
 
   iter_rep->Seek(EncodeKey(start));
@@ -211,13 +209,13 @@ MVCCStatsResult MVCCComputeStatsInternal(::rocksdb::Iterator* const iter_rep, Pm
 
 }  // namespace cockroach
 
-MVCCStatsResult MVCCComputeStats(PmemIterator* iter, PmemKey start, PmemKey end, int64_t now_nanos) {
-  return MVCCComputeStatsInternal(iter->rep.get(), start, end, now_nanos);
+PmemMVCCStatsResult PmemMVCCComputeStats(PmemIterator* iter, PmemKey start, PmemKey end, int64_t now_nanos) {
+  return PmemMVCCComputeStatsInternal(iter->rep.get(), start, end, now_nanos);
 }
 
-bool MVCCIsValidSplitKey(PmemSlice key) { return IsValidSplitKey(ToSlice(key)); }
+bool PmemMVCCIsValidSplitKey(PmemSlice key) { return IsValidSplitKey(ToSlice(key)); }
 
-PmemStatus MVCCFindSplitKey(PmemIterator* iter, PmemKey start, PmemKey end, PmemKey min_split,
+PmemStatus PmemMVCCFindSplitKey(PmemIterator* iter, PmemKey start, PmemKey end, PmemKey min_split,
                           int64_t target_size, PmemString* split_key) {
   auto iter_rep = iter->rep.get();
   const std::string start_key = EncodeKey(start);
@@ -273,7 +271,7 @@ PmemStatus MVCCFindSplitKey(PmemIterator* iter, PmemKey start, PmemKey end, Pmem
   return kSuccess;
 }
 
-PmemScanResults MVCCGet(PmemIterator* iter, PmemSlice key, PmemTimestamp timestamp, PmemTxn txn,
+PmemScanResults PmemMVCCGet(PmemIterator* iter, PmemSlice key, PmemTimestamp timestamp, PmemTxn txn,
                       bool inconsistent, bool tombstones, bool ignore_sequence) {
   // Get is implemented as a scan where we retrieve a single key. We specify an
   // empty key for the end key which will ensure we don't retrieve a key
@@ -285,7 +283,7 @@ PmemScanResults MVCCGet(PmemIterator* iter, PmemSlice key, PmemTimestamp timesta
   return scanner.get();
 }
 
-PmemScanResults MVCCScan(PmemIterator* iter, PmemSlice start, PmemSlice end, PmemTimestamp timestamp,
+PmemScanResults PmemMVCCScan(PmemIterator* iter, PmemSlice start, PmemSlice end, PmemTimestamp timestamp,
                        int64_t max_keys, PmemTxn txn, bool inconsistent, bool reverse,
                        bool tombstones, bool ignore_sequence) {
   ScopedStats scoped_iter(iter);

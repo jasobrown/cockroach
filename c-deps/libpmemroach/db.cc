@@ -164,14 +164,6 @@ PmemIterator* PmemNewIter(PmemEngine* db, PmemIterOptions iter_options) {
 
 void PmemIterDestroy(PmemIterator* iter) { delete iter; }
 
-IteratorStats PmemIterStats(PmemIterator* iter) {
-  IteratorStats stats = {};
-  if (iter->stats != nullptr) {
-    stats = *iter->stats;
-  }
-  return stats;
-}
-
 PmemIterState PmemIterSeek(PmemIterator* iter, PmemKey key) {
   ScopedStats stats(iter);
   iter->rep->Seek(EncodeKey(key));
