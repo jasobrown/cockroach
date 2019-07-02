@@ -16,9 +16,6 @@
 
 #include <atomic>
 #include <memory>
-#include <rocksdb/iterator.h>
-#include <rocksdb/write_batch.h>
-#include "chunked_buffer.h"
 
 struct PmemIterator {
   PmemIterator(std::atomic<int64_t>* iters, PmemIterOptions iter_options);
@@ -27,15 +24,15 @@ struct PmemIterator {
   void SetUpperBound(PmemKey key);
 
   std::atomic<int64_t>* const iters_count;
-  std::unique_ptr<rocksdb::Iterator> rep;
-  std::unique_ptr<cockroach::chunkedBuffer> kvs;
-  std::unique_ptr<rocksdb::WriteBatch> intents;
-  std::unique_ptr<IteratorStats> stats;
+    //  std::unique_ptr<rocksdb::Iterator> rep;
+    //  std::unique_ptr<cockroach::chunkedBuffer> kvs;
+    //  std::unique_ptr<rocksdb::WriteBatch> intents;
+    //  std::unique_ptr<IteratorStats> stats;
   std::string rev_resume_key;
 
-  rocksdb::ReadOptions read_opts;
+    //  rocksdb::ReadOptions read_opts;
   std::string lower_bound_str;
   std::string upper_bound_str;
-  rocksdb::Slice lower_bound;
-  rocksdb::Slice upper_bound;
+    //  rocksdb::Slice lower_bound;
+    //  rocksdb::Slice upper_bound;
 };

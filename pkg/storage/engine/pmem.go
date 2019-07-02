@@ -36,13 +36,13 @@ import (
 )
 
 // #cgo CPPFLAGS: -I../../../c-deps/libpmemroach/include
-// #cgo LDFLAGS: -lpmemroach
 // #cgo LDFLAGS: -lprotobuf
 // #cgo linux LDFLAGS: -lrt -lpthread
 //
 // #include <stdlib.h>
 // #include <libpmemroach.h>
 import "C"
+// // \# c g o LDFLAGS: -lpmemroach
 // include the libroach headers for simple things like DBStatus,  DBSlice, DBKey
 
 
@@ -404,13 +404,13 @@ func (pmem *PersistentMemoryEngine) NewIterator(opts IterOptions) Iterator {
 
 // NewBatch returns a new batch wrapping this pmem engine.
 func (pmem *PersistentMemoryEngine) NewBatch() Batch {
-	return newPmemBatch(pmem, false /* writeOnly */)
+	return newPmemBatch(pmem)
 }
 
 // NewWriteOnlyBatch returns a new write-only batch wrapping this pmem
 // engine.
 func (pmem *PersistentMemoryEngine) NewWriteOnlyBatch() Batch {
-	return newPmemBatch(pmem, true /* writeOnly */)
+	return newPmemBatch(pmem)
 }
 
 // GetStats retrieves stats from this engine's pmem instance and
@@ -453,280 +453,6 @@ func (pmem *PersistentMemoryEngine) GetAuxiliaryDir() string {
 func (pmem *PersistentMemoryEngine) GetEncryptionRegistries() (*EncryptionRegistries, error) {
 	// TODO(jeb) hoping we can fake this
 	return nil, errors.New("unsupported")
-}
-
-// TODO(jeb) is this necessary?
-// reusablePmemIterator wraps pmemIterator and allows reuse of an iterator
-// for the lifetime of a batch.
-type reusablePmemIterator struct {
-	pmemIterator
-	inuse bool
-}
-
-func (r *reusablePmemIterator) Close() {
-	// reusableIterator.Close() leaves the underlying rocksdb iterator open until
-	// the associated batch is closed.
-	if !r.inuse {
-		panic("closing idle iterator")
-	}
-	r.inuse = false
-}
-
-type distinctBatch struct {
-	*rocksDBBatch
-	prefixIter reusablePmemIterator
-	normalIter reusablePmemIterator
-}
-
-func (r *distinctBatch) Close() {
-	if !r.distinctOpen {
-		panic("distinct batch not open")
-	}
-	r.distinctOpen = false
-}
-
-// NewIterator returns an iterator over the batch and underlying engine. Note
-// that the returned iterator is cached and re-used for the lifetime of the
-// batch. A panic will be thrown if multiple prefix or normal (non-prefix)
-// iterators are used simultaneously on the same batch.
-func (r *distinctBatch) NewIterator(opts IterOptions) Iterator {
-	if opts.MinTimestampHint != (hlc.Timestamp{}) {
-		// Iterators that specify timestamp bounds cannot be cached.
-		if pmem.writeOnly {
-			return newRocksDBIterator(r.parent.rdb, opts, r, pmem.parent)
-		}
-		r.ensureBatch()
-		return newRocksDBIterator(r.batch, opts, r, pmem.parent)
-	}
-
-	// Use the cached iterator, creating it on first access.
-	iter := &r.normalIter
-	if opts.Prefix {
-		iter = &r.prefixIter
-	}
-	if iter.pmemIterator.iter == nil {
-		if pmem.writeOnly {
-			iter.pmemIterator.init(r.parent.rdb, opts, r, pmem.parent)
-		} else {
-			r.ensureBatch()
-			iter.pmemIterator.init(r.batch, opts, r, pmem.parent)
-		}
-	} else {
-		iter.pmemIterator.setOptions(opts)
-	}
-	if iter.inuse {
-		panic("iterator already in use")
-	}
-	iter.inuse = true
-	return iter
-}
-
-func (r *distinctBatch) Get(key MVCCKey) ([]byte, error) {
-	if pmem.writeOnly {
-		return dbGet(r.parent.rdb, key)
-	}
-	r.ensureBatch()
-	return dbGet(r.batch, key)
-}
-
-func (r *distinctBatch) GetProto(
-	key MVCCKey, msg protoutil.Message,
-) (ok bool, keyBytes, valBytes int64, err error) {
-	if pmem.writeOnly {
-		return dbGetProto(r.parent.rdb, key, msg)
-	}
-	r.ensureBatch()
-	return dbGetProto(r.batch, key, msg)
-}
-
-func (r *distinctBatch) Iterate(start, end MVCCKey, f func(MVCCKeyValue) (bool, error)) error {
-	r.ensureBatch()
-	return dbIterate(r.batch, r, start, end, f)
-}
-
-func (r *distinctBatch) Put(key MVCCKey, value []byte) error {
-	r.builder.Put(key, value)
-	return nil
-}
-
-func (r *distinctBatch) Merge(key MVCCKey, value []byte) error {
-	r.builder.Merge(key, value)
-	return nil
-}
-
-func (r *distinctBatch) LogData(data []byte) error {
-	r.builder.LogData(data)
-	return nil
-}
-
-func (r *distinctBatch) Clear(key MVCCKey) error {
-	r.builder.Clear(key)
-	return nil
-}
-
-func (r *distinctBatch) SingleClear(key MVCCKey) error {
-	r.builder.SingleClear(key)
-	return nil
-}
-
-func (r *distinctBatch) ClearRange(start, end MVCCKey) error {
-	if !r.writeOnly {
-		panic("readable batch")
-	}
-	r.flushMutations()
-	r.flushes++ // make sure that Repr() doesn't take a shortcut
-	r.ensureBatch()
-	return dbClearRange(r.batch, start, end)
-}
-
-func (r *distinctBatch) ClearIterRange(iter Iterator, start, end MVCCKey) error {
-	r.flushMutations()
-	r.flushes++ // make sure that Repr() doesn't take a shortcut
-	r.ensureBatch()
-	return dbClearIterRange(r.batch, iter, start, end)
-}
-
-func (r *distinctBatch) LogLogicalOp(op MVCCLogicalOpType, details MVCCLogicalOpDetails) {
-	// No-op. Logical logging disabled.
-}
-
-func (r *distinctBatch) close() {
-	if i := &r.prefixIter.pmemIterator; i.iter != nil {
-		i.destroy()
-	}
-	if i := &r.normalIter.pmemIterator; i.iter != nil {
-		i.destroy()
-	}
-}
-
-// batchIterator wraps pmemIterator and ensures that the buffered mutations
-// in a batch are flushed before performing read operations.
-type batchIterator struct {
-	iter  pmemIterator
-	batch *rocksDBBatch
-}
-
-func (r *batchIterator) Stats() IteratorStats {
-	return pmem.iter.Stats()
-}
-
-func (r *batchIterator) Close() {
-	if pmem.batch == nil {
-		panic("closing idle iterator")
-	}
-	r.batch = nil
-	r.iter.destroy()
-}
-
-func (r *batchIterator) Seek(key MVCCKey) {
-	r.batch.flushMutations()
-	r.iter.Seek(key)
-}
-
-func (r *batchIterator) SeekReverse(key MVCCKey) {
-	r.batch.flushMutations()
-	r.iter.SeekReverse(key)
-}
-
-func (r *batchIterator) Valid() (bool, error) {
-	return pmem.iter.Valid()
-}
-
-func (r *batchIterator) Next() {
-	r.batch.flushMutations()
-	r.iter.Next()
-}
-
-func (r *batchIterator) Prev() {
-	r.batch.flushMutations()
-	r.iter.Prev()
-}
-
-func (r *batchIterator) NextKey() {
-	r.batch.flushMutations()
-	r.iter.NextKey()
-}
-
-func (r *batchIterator) PrevKey() {
-	r.batch.flushMutations()
-	r.iter.PrevKey()
-}
-
-func (r *batchIterator) ComputeStats(
-	start, end MVCCKey, nowNanos int64,
-) (enginepb.MVCCStats, error) {
-	r.batch.flushMutations()
-	return pmem.iter.ComputeStats(start, end, nowNanos)
-}
-
-func (r *batchIterator) FindSplitKey(
-	start, end, minSplitKey MVCCKey, targetSize int64,
-) (MVCCKey, error) {
-	r.batch.flushMutations()
-	return pmem.iter.FindSplitKey(start, end, minSplitKey, targetSize)
-}
-
-func (r *batchIterator) MVCCGet(
-	key roachpb.Key, timestamp hlc.Timestamp, opts MVCCGetOptions,
-) (*roachpb.Value, *roachpb.Intent, error) {
-	r.batch.flushMutations()
-	return pmem.iter.MVCCGet(key, timestamp, opts)
-}
-
-func (r *batchIterator) MVCCScan(
-	start, end roachpb.Key, max int64, timestamp hlc.Timestamp, opts MVCCScanOptions,
-) (kvData []byte, numKVs int64, resumeSpan *roachpb.Span, intents []roachpb.Intent, err error) {
-	r.batch.flushMutations()
-	return pmem.iter.MVCCScan(start, end, max, timestamp, opts)
-}
-
-func (r *batchIterator) SetUpperBound(key roachpb.Key) {
-	r.iter.SetUpperBound(key)
-}
-
-func (r *batchIterator) Key() MVCCKey {
-	return pmem.iter.Key()
-}
-
-func (r *batchIterator) Value() []byte {
-	return pmem.iter.Value()
-}
-
-func (r *batchIterator) ValueProto(msg protoutil.Message) error {
-	return pmem.iter.ValueProto(msg)
-}
-
-func (r *batchIterator) UnsafeKey() MVCCKey {
-	return pmem.iter.UnsafeKey()
-}
-
-func (r *batchIterator) UnsafeValue() []byte {
-	return pmem.iter.UnsafeValue()
-}
-
-func (r *batchIterator) getIter() *C.PmemIterator {
-	return pmem.iter.iter
-}
-
-// reusableBatchIterator wraps batchIterator and makes the Close method a no-op
-// to allow reuse of the iterator for the lifetime of the batch. The batch must
-// call iter.destroy() when it closes itself.
-type reusableBatchIterator struct {
-	batchIterator
-}
-
-func (r *reusableBatchIterator) Close() {
-	// reusableBatchIterator.Close() leaves the underlying rocksdb iterator open
-	// until the associated batch is closed.
-	if pmem.batch == nil {
-		panic("closing idle iterator")
-	}
-	r.batch = nil
-}
-
-// TODO(jeb) wtf is this?!?!?
-type dbIteratorGetter interface {
-	getIter() *C.PmemIterator
 }
 
 type pmemIterator struct {
@@ -882,7 +608,7 @@ func (it *pmemIterator) Value() []byte {
 }
 
 func (it *pmemIterator) ValueProto(msg protoutil.Message) error {
-	if pmem.value.len <= 0 {
+	if it.value.len <= 0 {
 		return nil
 	}
 	return protoutil.Unmarshal(it.UnsafeValue(), msg)
@@ -1071,6 +797,348 @@ func (it *pmemIterator) SetUpperBound(key roachpb.Key) {
 	C.PmemIterSetUpperBound(it.iter, goToCPmemKey(MakeMVCCMetadataKey(key)))
 }
 
+type pmemBatch struct {
+	PersistentMemoryEngine
+	count int
+}
+
+func newPmemBatch(pmem *PersistentMemoryEngine) pmemBatch {
+	return pmemBatch{*pmem, 0}
+}
+
+func (batch *pmemBatch) Commit(sync bool) error {
+	return nil
+}
+
+func (batch *pmemBatch) Distinct() ReadWriter {
+	return batch
+}
+
+func (batch *pmemBatch) Empty() bool {
+	return batch.count == 0
+}
+
+func (batch *pmemBatch) Len() int {
+	return batch.count
+}
+
+func (batch *pmemBatch) Repr() []byte {
+	// TODO(jeb) roll the dice and see if this works
+	return nil
+}
+
+func (batch *pmemBatch) Close() {
+
+}
+
+
+//type pmemBatch struct {
+//	parent             *PersistentMemoryEngine
+//	batch              *C.PmemEngine
+//	flushes            int
+//	flushedCount       int
+//	flushedSize        int
+//	prefixIter         reusableBatchIterator
+//	normalIter         reusableBatchIterator
+//	builder            RocksDBBatchBuilder
+//	distinct           distinctBatch
+//	distinctOpen       bool
+//	distinctNeedsFlush bool
+//	writeOnly          bool
+//	syncCommit         bool
+//	closed             bool
+//	committed          bool
+//	commitErr          error
+//	commitWG           sync.WaitGroup
+//}
+
+//func newPmemBatch(parent *PersistentMemoryEngine, writeOnly bool) *pmemBatch {
+//	// Get a new batch from the pool. Batches in the pool may have their closed
+//	// fields set to true to facilitate some sanity check assertions. Reset this
+//	// field and set others.
+//	batch := &pmemBatch{}
+//	batch.closed = false
+//	batch.parent = parent
+//	batch.writeOnly = writeOnly
+//	batch.distinct.batch = batch
+//	return batch
+//}
+
+//// TODO(jeb) is this necessary ?
+//// reusablePmemIterator wraps pmemIterator and allows reuse of an iterator
+//// for the lifetime of a batch.
+//type reusablePmemIterator struct {
+//	pmemIterator
+//	inuse bool
+//}
+
+//func (r *reusablePmemIterator) Close() {
+//	// reusableIterator.Close() leaves the underlying rocksdb iterator open until
+//	// the associated batch is closed.
+//	if !r.inuse {
+//		panic("closing idle iterator")
+//	}
+//	r.inuse = false
+//}
+
+//type distinctBatch struct {
+//	*pmemBatch
+//	prefixIter reusablePmemIterator
+//	normalIter reusablePmemIterator
+//}
+//
+//func (r *distinctBatch) Close() {
+//	if !r.distinctOpen {
+//		panic("distinct batch not open")
+//	}
+//	r.distinctOpen = false
+//}
+//
+//// NewIterator returns an iterator over the batch and underlying engine. Note
+//// that the returned iterator is cached and re-used for the lifetime of the
+//// batch. A panic will be thrown if multiple prefix or normal (non-prefix)
+//// iterators are used simultaneously on the same batch.
+//func (it *distinctBatch) NewIt erator(opts IterOptions) Iterator {
+//	if opts.MinTimestampHint != (hlc.Timestamp{}) {
+//		// Iterators that specify timestamp bounds cannot be cached.
+//		if it.writeOnly {
+//			return newRocksDBIterator(it.parent.rdb, opts, it, it.parent)
+//		}
+//		r.ensureBatch()
+//		return newRocksDBIterator(it.batch, opts, it, it.parent)
+//	}
+//
+//	// Use the cached iterator, creating it on first access.
+//	iter := &it.normalIter
+//	if opts.Prefix {
+//		iter = &it.prefixIter
+//	}
+//	if iter.pmemIterator.iter == nil {
+//		if it.p.writeOnly {
+//			iter.pmemIterator.init(r.parent.rdb, opts, r, pmem.parent)
+//		} else {
+//			r.ensureBatch()
+//			iter.pmemIterator.init(r.batch, opts, r, pmem.parent)
+//		}
+//	} else {
+//		iter.pmemIterator.setOptions(opts)
+//	}
+//	if iter.inuse {
+//		panic("iterator already in use")
+//	}
+//	iter.inuse = true
+//	return iter
+//}
+//
+//func (r *distinctBatch) Get(key MVCCKey) ([]byte, error) {
+//	if pmem.writeOnly {
+//		return dbGet(r.parent.rdb, key)
+//	}
+//	r.ensureBatch()
+//	return dbGet(r.batch, key)
+//}
+//
+//func (r *distinctBatch) GetProto(
+//	key MVCCKey, msg protoutil.Message,
+//) (ok bool, keyBytes, valBytes int64, err error) {
+//	if pmem.writeOnly {
+//		return dbGetProto(r.parent.rdb, key, msg)
+//	}
+//	r.ensureBatch()
+//	return dbGetProto(r.batch, key, msg)
+//}
+//
+//func (r *distinctBatch) Iterate(start, end MVCCKey, f func(MVCCKeyValue) (bool, error)) error {
+//	r.ensureBatch()
+//	return dbIterate(r.batch, r, start, end, f)
+//}
+//
+//func (r *distinctBatch) Put(key MVCCKey, value []byte) error {
+//	r.builder.Put(key, value)
+//	return nil
+//}
+//
+//func (r *distinctBatch) Merge(key MVCCKey, value []byte) error {
+//	r.builder.Merge(key, value)
+//	return nil
+//}
+//
+//func (r *distinctBatch) LogData(data []byte) error {
+//	r.builder.LogData(data)
+//	return nil
+//}
+//
+//func (r *distinctBatch) Clear(key MVCCKey) error {
+//	r.builder.Clear(key)
+//	return nil
+//}
+//
+//func (r *distinctBatch) SingleClear(key MVCCKey) error {
+//	r.builder.SingleClear(key)
+//	return nil
+//}
+//
+//func (r *distinctBatch) ClearRange(start, end MVCCKey) error {
+//	if !r.writeOnly {
+//		panic("readable batch")
+//	}
+//	r.flushMutations()
+//	r.flushes++ // make sure that Repr() doesn't take a shortcut
+//	r.ensureBatch()
+//	return dbClearRange(r.batch, start, end)
+//}
+//
+//func (r *distinctBatch) ClearIterRange(iter Iterator, start, end MVCCKey) error {
+//	r.flushMutations()
+//	r.flushes++ // make sure that Repr() doesn't take a shortcut
+//	r.ensureBatch()
+//	return dbClearIterRange(r.batch, iter, start, end)
+//}
+//
+//func (r *distinctBatch) LogLogicalOp(op MVCCLogicalOpType, details MVCCLogicalOpDetails) {
+//	// No-op. Logical logging disabled.
+//}
+//
+//func (r *distinctBatch) close() {
+//	if i := &r.prefixIter.pmemIterator; i.iter != nil {
+//		i.destroy()
+//	}
+//	if i := &r.normalIter.pmemIterator; i.iter != nil {
+//		i.destroy()
+//	}
+//}
+
+//// batchIterator wraps pmemIterator and ensures that the buffered mutations
+//// in a batch are flushed before performing read operations.
+//type batchIterator struct {
+//	iter  pmemIterator
+//	batch *rocksDBBatch
+//}
+//
+//func (it *batchIterator) Stats() IteratorStats {
+//	return it.iter.Stats()
+//}
+//
+//func (it *batchIterator) Close() {
+//	if it.batch == nil {
+//		panic("closing idle iterator")
+//	}
+//	it.batch = nil
+//	it.iter.destroy()
+//}
+//
+//func (it *batchIterator) Seek(key MVCCKey) {
+//	it.batch.flushMutations()
+//	it.iter.Seek(key)
+//}
+//
+//func (it *batchIterator) SeekReverse(key MVCCKey) {
+//	it.batch.flushMutations()
+//	it.iter.SeekReverse(key)
+//}
+//
+//func (it *batchIterator) Valid() (bool, error) {
+//	return it.iter.Valid()
+//}
+//
+//func (it *batchIterator) Next() {
+//	it.batch.flushMutations()
+//	it.iter.Next()
+//}
+//
+//func (it *batchIterator) Prev() {
+//	it.batch.flushMutations()
+//	it.iter.Prev()
+//}
+//
+//func (it *batchIterator) NextKey() {
+//	it.batch.flushMutations()
+//	it.iter.NextKey()
+//}
+//
+//func (it *batchIterator) PrevKey() {
+//	it.batch.flushMutations()
+//	it.iter.PrevKey()
+//}
+//
+//func (it *batchIterator) ComputeStats(
+//	start, end MVCCKey, nowNanos int64,
+//) (enginepb.MVCCStats, error) {
+//	it.batch.flushMutations()
+//	return it.iter.ComputeStats(start, end, nowNanos)
+//}
+//
+//func (it *batchIterator) FindSplitKey(
+//	start, end, minSplitKey MVCCKey, targetSize int64,
+//) (MVCCKey, error) {
+//	it.batch.flushMutations()
+//	return it.iter.FindSplitKey(start, end, minSplitKey, targetSize)
+//}
+//
+//func (it *batchIterator) MVCCGet(
+//	key roachpb.Key, timestamp hlc.Timestamp, opts MVCCGetOptions,
+//) (*roachpb.Value, *roachpb.Intent, error) {
+//	it.batch.flushMutations()
+//	return it.iter.MVCCGet(key, timestamp, opts)
+//}
+//
+//func (it *batchIterator) MVCCScan(
+//	start, end roachpb.Key, max int64, timestamp hlc.Timestamp, opts MVCCScanOptions,
+//) (kvData []byte, numKVs int64, resumeSpan *roachpb.Span, intents []roachpb.Intent, err error) {
+//	it.batch.flushMutations()
+//	return it.iter.MVCCScan(start, end, max, timestamp, opts)
+//}
+//
+//func (it *batchIterator) SetUpperBound(key roachpb.Key) {
+//	it.iter.SetUpperBound(key)
+//}
+//
+//func (it *batchIterator) Key() MVCCKey {
+//	return it.iter.Key()
+//}
+//
+//func (it *batchIterator) Value() []byte {
+//	return it.iter.Value()
+//}
+//
+//func (it *batchIterator) ValueProto(msg protoutil.Message) error {
+//	return it.iter.ValueProto(msg)
+//}
+//
+//func (it *batchIterator) UnsafeKey() MVCCKey {
+//	return it.iter.UnsafeKey()
+//}
+//
+//func (it *batchIterator) UnsafeValue() []byte {
+//	return it.iter.UnsafeValue()
+//}
+//
+//func (it *batchIterator) getIter() *C.PmemIterator {
+//	return it.iter.iter
+//}
+
+//// reusableBatchIterator wraps batchIterator and makes the Close method a no-op
+//// to allow reuse of the iterator for the lifetime of the batch. The batch must
+//// call iter.destroy() when it closes itself.
+//type reusableBatchIterator struct {
+//	batchIterator
+//}
+//
+//func (r *reusableBatchIterator) Close() {
+//	// reusableBatchIterator.Close() leaves the underlying rocksdb iterator open
+//	// until the associated batch is closed.
+//	if pmem.batch == nil {
+//		panic("closing idle iterator")
+//	}
+//	r.batch = nil
+//}
+
+// TODO(jeb) wtf is this?!?!?
+//type dbIteratorGetter interface {
+//	getIter() *C.PmemIterator
+//}
+
+
 func copyFromPmemSliceVector(bufs *C.PmemSlice, len C.int32_t) []byte {
 	if bufs == nil {
 		return nil
@@ -1089,7 +1157,7 @@ func copyFromPmemSliceVector(bufs *C.PmemSlice, len C.int32_t) []byte {
 	return data
 }
 
-func cPmemStatsToGoStats(stats C.MVCCStatsResult, nowNanos int64) (enginepb.MVCCStats, error) {
+func cPmemStatsToGoStats(stats C.PmemMVCCStatsResult, nowNanos int64) (enginepb.MVCCStats, error) {
 	ms := enginepb.MVCCStats{}
 	if err := pmemStatusToError(stats.status); err != nil {
 		return ms, err
@@ -1479,5 +1547,5 @@ func (pmem *PersistentMemoryEngine) NewSortedDiskMultiMap() diskmap.SortedDiskMa
 // chosen within any of these ranges are considered invalid. And a split key
 // equal to Meta2KeyMax (\x03\xff\xff) is considered invalid.
 func IsValidSplitKey(key roachpb.Key) bool {
-	return bool(C.MVCCIsValidSplitKey(goToCPmemSlice(key)))
+	return bool(C.PmemMVCCIsValidSplitKey(goToCPmemSlice(key)))
 }

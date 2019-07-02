@@ -1,0 +1,13 @@
+/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/CMakeFiles/rebuild_cache.dir
+/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/CMakeFiles/edit_cache.dir
+/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/CMakeFiles/test.dir
+/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/CMakeFiles/check.dir
+/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/CMakeFiles/db_test.dir
+/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/CMakeFiles/encoding_test.dir
+/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/CMakeFiles/pmemroach.dir
+/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/CMakeFiles/merge_test.dir
+/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/googletest/CMakeFiles/rebuild_cache.dir
+/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/googletest/CMakeFiles/test.dir
+/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/googletest/CMakeFiles/gtest.dir
+/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/googletest/CMakeFiles/edit_cache.dir
+/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/googletest/CMakeFiles/gtest_main.dir

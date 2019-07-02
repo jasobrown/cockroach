@@ -14,20 +14,19 @@
 
 #pragma once
 
-#include <libroach.h>
-#include <rocksdb/merge_operator.h>
+#include <libpmemroach.h>
 #include "defines.h"
 #include "protos/roachpb/internal.pb.h"
 #include "protos/storage/engine/enginepb/mvcc.pb.h"
 
 namespace cockroach {
 
-WARN_UNUSED_RESULT bool MergeValues(cockroach::storage::engine::enginepb::MVCCMetadata* left,
-                                    const cockroach::storage::engine::enginepb::MVCCMetadata& right,
-                                    bool full_merge, rocksdb::Logger* logger);
+// WARN_UNUSED_RESULT bool MergeValues(cockroach::storage::engine::enginepb::MVCCMetadata* left,
+//                                     const cockroach::storage::engine::enginepb::MVCCMetadata& right,
+//                                     bool full_merge, rocksdb::Logger* logger);
 PmemStatus MergeResult(cockroach::storage::engine::enginepb::MVCCMetadata* meta, PmemString* result);
-rocksdb::MergeOperator* NewMergeOperator();
-void sortAndDeduplicateColumns(roachpb::InternalTimeSeriesData* data, int first_unsorted);
-void convertToColumnar(roachpb::InternalTimeSeriesData* data);
+// rocksdb::MergeOperator* NewMergeOperator();
+// void sortAndDeduplicateColumns(roachpb::InternalTimeSeriesData* data, int first_unsorted);
+// void convertToColumnar(roachpb::InternalTimeSeriesData* data);
 
 }  // namespace cockroach

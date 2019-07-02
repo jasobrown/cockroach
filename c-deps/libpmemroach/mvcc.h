@@ -15,11 +15,9 @@
 #pragma once
 
 #include <algorithm>
-#include "chunked_buffer.h"
 #include "db.h"
 #include "encoding.h"
 #include "iterator.h"
-#include "keys.h"
 #include "protos/storage/engine/enginepb/mvcc.pb.h"
 #include "status.h"
 #include "timestamp.h"
@@ -65,6 +63,7 @@ template <bool reverse> class mvccScanner {
         txn_max_timestamp_(txn.max_timestamp),
         inconsistent_(inconsistent),
         tombstones_(tombstones),
+
         ignore_sequence_(ignore_sequence),
         check_uncertainty_(timestamp < txn.max_timestamp),
         kvs_(new chunkedBuffer),

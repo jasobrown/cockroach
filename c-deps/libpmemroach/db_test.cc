@@ -14,7 +14,7 @@
 
 #include "db.h"
 #include "file_registry.h"
-#include "include/libroach.h"
+#include "include/libpmemroach.h"
 #include "status.h"
 #include "testutils.h"
 

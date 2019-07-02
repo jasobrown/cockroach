@@ -1,0 +1,1 @@
+/usr/bin/clang++-7    -rdynamic CMakeFiles/merge_test.dir/merge_test.cc.o CMakeFiles/merge_test.dir/testutils.cc.o  -o merge_test libpmemroach.a googletest/libgtest_main.a -lpthread -lrt googletest/libgtest.a -pthread 

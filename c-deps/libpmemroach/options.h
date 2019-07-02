@@ -14,8 +14,7 @@
 
 #pragma once
 
-#include <libroach.h>
-#include <rocksdb/options.h>
+#include <libpmemroach.h>
 
 namespace cockroach {
 
@@ -25,9 +24,9 @@ static const int kDefaultVerbosityForInfoLogging = 3;
 // RocksPmem's log level into a corresponding Go log level.
 // The message is logged if severity is higher than info, or if severity is
 // info and glog verbosity is at least `info_verbosity`.
-rocksdb::Logger* NewPmemLogger(int info_verbosity);
+//rocksdb::Logger* NewPmemLogger(int info_verbosity);
 
 // PmemMakeOptions constructs a rocksdb::Options given a PmemOptions.
-rocksdb::Options PmemMakeOptions(PmemOptions db_opts);
+//rocksdb::Options PmemMakeOptions(PmemOptions db_opts);
 
 }  // namespace cockroach

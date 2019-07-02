@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <libroach.h>
+#include <libpmemroach.h>
 
 extern "C" {
 bool __attribute__((weak)) pmemV(int, int);

@@ -701,8 +701,8 @@ $(LIBPMDK): $(BUILD_DIR)/pmdk/Makefile bin/uptodate .ALWAYS_REBUILD
 libpmemroach-inputs := $(LIBPMEMROACH_SRC_DIR) $(PROTOBUF_SRC_DIR)/src
 
 $(LIBPMEMROACH): $(LIBPMEMROACH_DIR)/Makefile bin/uptodate .ALWAYS_REBUILD
-	$(info skipping build of libpmemroach, for now)
-#	@uptodate $@ $(libpmemroach-inputs) || $(MAKE) --no-print-directory -C $(LIBPMEMROACH_DIR) pmemroach
+#	$(info skipping build of libpmemroach, for now)
+	@uptodate $@ $(libpmemroach-inputs) || $(MAKE) --no-print-directory -C $(LIBPMEMROACH_DIR) pmemroach
 
 $(LIBKRB5): $(KRB5_DIR)/Makefile bin/uptodate .ALWAYS_REBUILD
 	@uptodate $@ $(KRB5_SRC_DIR)/src || $(MAKE) --no-print-directory -C $(KRB5_DIR)

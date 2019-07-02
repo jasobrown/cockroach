@@ -1,0 +1,62 @@
+[
+{
+  "directory": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach",
+  "command": "/usr/bin/clang++-7   -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/../googletest/googletest/include -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/../protobuf/src -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/protos -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/./include -isystem /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/googletest/googletest/include    -Werror -Wall -Wno-sign-compare -std=c++11 -o CMakeFiles/db_test.dir/db_test.cc.o -c /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/db_test.cc",
+  "file": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/db_test.cc"
+},
+{
+  "directory": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach",
+  "command": "/usr/bin/clang++-7   -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/../googletest/googletest/include -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/../protobuf/src -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/protos -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/./include -isystem /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/googletest/googletest/include    -Werror -Wall -Wno-sign-compare -std=c++11 -o CMakeFiles/db_test.dir/testutils.cc.o -c /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/testutils.cc",
+  "file": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/testutils.cc"
+},
+{
+  "directory": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach",
+  "command": "/usr/bin/clang++-7   -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/../googletest/googletest/include -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/../protobuf/src -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/protos -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/./include -isystem /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/googletest/googletest/include    -Werror -Wall -Wno-sign-compare -std=c++11 -o CMakeFiles/encoding_test.dir/encoding_test.cc.o -c /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/encoding_test.cc",
+  "file": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/encoding_test.cc"
+},
+{
+  "directory": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach",
+  "command": "/usr/bin/clang++-7   -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/../googletest/googletest/include -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/../protobuf/src -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/protos -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/./include -isystem /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/googletest/googletest/include    -Werror -Wall -Wno-sign-compare -std=c++11 -o CMakeFiles/encoding_test.dir/testutils.cc.o -c /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/testutils.cc",
+  "file": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/testutils.cc"
+},
+{
+  "directory": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach",
+  "command": "/usr/bin/clang++-7   -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/./include -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/../protobuf/src -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/protos    -Werror -Wall -Wno-sign-compare -std=c++14 -o CMakeFiles/pmemroach.dir/db.cc.o -c /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/db.cc",
+  "file": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/db.cc"
+},
+{
+  "directory": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach",
+  "command": "/usr/bin/clang++-7   -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/./include -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/../protobuf/src -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/protos    -Werror -Wall -Wno-sign-compare -std=c++14 -o CMakeFiles/pmemroach.dir/engine.cc.o -c /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/engine.cc",
+  "file": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/engine.cc"
+},
+{
+  "directory": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach",
+  "command": "/usr/bin/clang++-7   -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/./include -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/../protobuf/src -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/protos    -Werror -Wall -Wno-sign-compare -std=c++14 -o CMakeFiles/pmemroach.dir/godefs.cc.o -c /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/godefs.cc",
+  "file": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/godefs.cc"
+},
+{
+  "directory": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach",
+  "command": "/usr/bin/clang++-7   -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/./include -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/../protobuf/src -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/protos    -Werror -Wall -Wno-sign-compare -std=c++14 -o CMakeFiles/pmemroach.dir/iterator.cc.o -c /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/iterator.cc",
+  "file": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/iterator.cc"
+},
+{
+  "directory": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach",
+  "command": "/usr/bin/clang++-7   -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/../googletest/googletest/include -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/../protobuf/src -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/protos -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/./include -isystem /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/googletest/googletest/include    -Werror -Wall -Wno-sign-compare -std=c++11 -o CMakeFiles/merge_test.dir/merge_test.cc.o -c /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/merge_test.cc",
+  "file": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/merge_test.cc"
+},
+{
+  "directory": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach",
+  "command": "/usr/bin/clang++-7   -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/../googletest/googletest/include -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/../protobuf/src -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/protos -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/./include -isystem /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/googletest/googletest/include    -Werror -Wall -Wno-sign-compare -std=c++11 -o CMakeFiles/merge_test.dir/testutils.cc.o -c /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/testutils.cc",
+  "file": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/testutils.cc"
+},
+{
+  "directory": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/googletest",
+  "command": "/usr/bin/clang++-7   -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/googletest/googletest/include -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/googletest/googletest      -DGTEST_HAS_PTHREAD=1   -o CMakeFiles/gtest.dir/src/gtest-all.cc.o -c /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/googletest/googletest/src/gtest-all.cc",
+  "file": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/googletest/googletest/src/gtest-all.cc"
+},
+{
+  "directory": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/googletest",
+  "command": "/usr/bin/clang++-7   -I/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/googletest/googletest -isystem /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/googletest/googletest/include      -DGTEST_HAS_PTHREAD=1   -o CMakeFiles/gtest_main.dir/src/gtest_main.cc.o -c /opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/googletest/googletest/src/gtest_main.cc",
+  "file": "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/googletest/googletest/src/gtest_main.cc"
+}
+]

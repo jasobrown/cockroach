@@ -13,9 +13,7 @@
 // permissions and limitations under the License.
 
 #include "encoding.h"
-#include <rocksdb/slice.h>
 #include "db.h"
-#include "keys.h"
 
 namespace cockroach {
 

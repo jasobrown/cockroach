@@ -19,7 +19,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-Extern "C" {
+extern "C" {
 #endif
 
 // A PmemSlice contains read-only data that does not need to be freed.
@@ -146,7 +146,7 @@ PmemSlice PmemBatchRepr(PmemEngine* db);
 // does not need to index keys for reading and can be faster if the
 // number of keys is large (and reads are not necessary). It is the
 // caller's responsibility to call PmemClose().
-PmemEngine* PmemNewBatch(PmemEngine* db, bool writeOnly);
+    //PmemEngine* PmemNewBatch(PmemEngine* db, bool writeOnly);
 
 // Creates a new database iterator.
 //

@@ -20,27 +20,22 @@ cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
 project(pmemroachlib)
 
 add_library(pmemroach
-  batch.cc
-  chunked_buffer.cc
   db.cc
   encoding.cc
   engine.cc
-  getter.cc
   godefs.cc
   iterator.cc
   merge.cc
   mvcc.cc
-  options.cc
-  utils.cc
-  protos/roachpb/data.pb.cc
-  protos/roachpb/internal.pb.cc
-  protos/roachpb/metadata.pb.cc
-  protos/storage/engine/enginepb/mvcc.pb.cc
-  protos/storage/engine/enginepb/mvcc3.pb.cc
-  protos/util/hlc/legacy_timestamp.pb.cc
-  protos/util/hlc/timestamp.pb.cc
-  protos/util/log/log.pb.cc
-  protos/util/unresolved_addr.pb.cc
+  # protos/roachpb/data.pb.cc
+  # protos/roachpb/internal.pb.cc
+  # protos/roachpb/metadata.pb.cc
+  # protos/storage/engine/enginepb/mvcc.pb.cc
+  # protos/storage/engine/enginepb/mvcc3.pb.cc
+  # protos/util/hlc/legacy_timestamp.pb.cc
+  # protos/util/hlc/timestamp.pb.cc
+  # protos/util/log/log.pb.cc
+  # protos/util/unresolved_addr.pb.cc
 )
 target_include_directories(pmemroach
   PUBLIC  ./include
@@ -61,7 +56,6 @@ enable_testing()
 
 # List of tests to build and run.
 set(tests
-  chunked_buffer_test.cc
   db_test.cc
   encoding_test.cc
   merge_test.cc

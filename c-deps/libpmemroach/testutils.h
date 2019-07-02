@@ -18,7 +18,7 @@
 #include <rocksdb/env.h>
 #include <rocksdb/status.h>
 #include <string>
-#include "include/libroach.h"
+#include "include/libpmemroach.h"
 
 namespace testutils {
 

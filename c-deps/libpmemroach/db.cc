@@ -15,83 +15,45 @@
 #include "db.h"
 #include <algorithm>
 #include <stdarg.h>
-#include "batch.h"
-#include "comparator.h"
 #include "defines.h"
 #include "encoding.h"
 #include "engine.h"
-#include "env_manager.h"
 #include "fmt.h"
-#include "getter.h"
 #include "godefs.h"
 #include "iterator.h"
 #include "merge.h"
 #include "options.h"
-#include "snapshot.h"
 #include "status.h"
-#include "table_props.h"
 
 using namespace cockroach;
-
-namespace cockroach {
-
-PmemKey ToPmemKey(const rocksdb::Slice& s) {
-  PmemKey key;
-  memset(&key, 0, sizeof(key));
-  rocksdb::Slice tmp;
-  if (DecodeKey(s, &tmp, &key.wall_time, &key.logical)) {
-    key.key = ToPmemSlice(tmp);
-  }
-  return key;
-}
-
-ScopedStats::ScopedStats(PmemIterator* iter)
-    : iter_(iter),
-      internal_delete_skipped_count_base_(
-          rocksdb::get_perf_context()->internal_delete_skipped_count) {
-  if (iter_->stats != nullptr) {
-    rocksdb::SetPerfLevel(rocksdb::PerfLevel::kEnableTimeExceptForMutex);
-  }
-}
-ScopedStats::~ScopedStats() {
-  if (iter_->stats != nullptr) {
-    iter_->stats->internal_delete_skipped_count +=
-        (rocksdb::get_perf_context()->internal_delete_skipped_count -
-         internal_delete_skipped_count_base_);
-    rocksdb::SetPerfLevel(rocksdb::PerfLevel::kDisable);
-  }
-}
-
-}  // namespace cockroach
 
 namespace {
 
 PmemIterState PmemIterGetState(PmemIterator* iter) {
   PmemIterState state = {};
-  state.valid = iter->rep->Valid();
-  state.status = ToPmemStatus(iter->rep->status());
+  // state.valid = iter->rep->Valid();
+  // state.status = ToPmemStatus(iter->rep->status());
 
-  if (state.valid) {
-    rocksdb::Slice key;
-    state.valid = DecodeKey(iter->rep->key(), &key, &state.key.wall_time, &state.key.logical);
-    if (state.valid) {
-      state.key.key = ToPmemSlice(key);
-      state.value = ToPmemSlice(iter->rep->value());
-    }
-  }
+  // if (state.valid) {
+  //   rocksdb::Slice key;
+  //   state.valid = DecodeKey(iter->rep->key(), &key, &state.key.wall_time, &state.key.logical);
+  //   if (state.valid) {
+  //     state.key.key = ToPmemSlice(key);
+  //     state.value = ToPmemSlice(iter->rep->value());
+  //   }
+  // }
 
   return state;
 }
 
 }  // namespace
 
-namespace cockroach {
-
-static PmemOpenHook* db_open_hook = PmemOpenHookOSS;
+//namespace cockroach {
 
 PmemStatus PmemDestroy(PmemSlice dir) {
-  rocksdb::Options options;
-  return ToPmemStatus(rocksdb::DestroyPmem(ToString(dir), options));
+  // rocksdb::Options options;
+  // return ToPmemStatus(rocksdb::DestroyPmem(ToString(dir), options));
+    return kSuccess;
 }
 
 PmemStatus PmemClose(PmemEngine* db) {
@@ -105,10 +67,10 @@ PmemStatus PmemClose(PmemEngine* db) {
 PmemStatus PmemApproximateDiskBytes(PmemEngine* db, PmemKey start, PmemKey end, uint64_t* size) {
   const std::string start_key(EncodeKey(start));
   const std::string end_key(EncodeKey(end));
-  const rocksdb::Range r(start_key, end_key);
-  const uint8_t flags = rocksdb::Pmem::SizeApproximationFlags::INCLUDE_FILES;
+  // const rocksdb::Range r(start_key, end_key);
+  // const uint8_t flags = rocksdb::Pmem::SizeApproximationFlags::INCLUDE_FILES;
 
-  db->rep->GetApproximateSizes(&r, 1, size, flags);
+  // db->rep->GetApproximateSizes(&r, 1, size, flags);
   return kSuccess;
 }
 
@@ -125,15 +87,15 @@ PmemStatus PmemSingleDelete(PmemEngine* db, PmemKey key) { return db->SingleDele
 PmemStatus PmemDeleteRange(PmemEngine* db, PmemKey start, PmemKey end) { return db->DeleteRange(start, end); }
 
 PmemStatus PmemDeleteIterRange(PmemEngine* db, PmemIterator* iter, PmemKey start, PmemKey end) {
-  rocksdb::Iterator* const iter_rep = iter->rep.get();
-  iter_rep->Seek(EncodeKey(start));
-  const std::string end_key = EncodeKey(end);
-  for (; iter_rep->Valid() && kComparator.Compare(iter_rep->key(), end_key) < 0; iter_rep->Next()) {
-    PmemStatus status = db->Delete(ToPmemKey(iter_rep->key()));
-    if (status.data != NULL) {
-      return status;
-    }
-  }
+  // rocksdb::Iterator* const iter_rep = iter->rep.get();
+  // iter_rep->Seek(EncodeKey(start));
+  // const std::string end_key = EncodeKey(end);
+  // for (; iter_rep->Valid() && kComparator.Compare(iter_rep->key(), end_key) < 0; iter_rep->Next()) {
+  //   PmemStatus status = db->Delete(ToPmemKey(iter_rep->key()));
+  //   if (status.data != NULL) {
+  //     return status;
+  //   }
+  // }
   return kSuccess;
 }
 
@@ -151,12 +113,12 @@ PmemStatus PmemApplyBatchRepr(PmemEngine* db, PmemSlice repr, bool sync) {
 
 PmemSlice PmemBatchRepr(PmemEngine* db) { return db->BatchRepr(); }
 
-PmemEngine* PmemNewBatch(PmemEngine* db, bool writeOnly) {
-  if (writeOnly) {
-    return new PmemWriteOnlyBatch(db);
-  }
-  return new PmemBatch(db);
-}
+// PmemEngine* PmemNewBatch(PmemEngine* db, bool writeOnly) {
+//   if (writeOnly) {
+//     return new PmemWriteOnlyBatch(db);
+//   }
+//   return new PmemBatch(db);
+// }
 
 PmemIterator* PmemNewIter(PmemEngine* db, PmemIterOptions iter_options) {
   return db->NewIter(iter_options);
@@ -165,100 +127,97 @@ PmemIterator* PmemNewIter(PmemEngine* db, PmemIterOptions iter_options) {
 void PmemIterDestroy(PmemIterator* iter) { delete iter; }
 
 PmemIterState PmemIterSeek(PmemIterator* iter, PmemKey key) {
-  ScopedStats stats(iter);
-  iter->rep->Seek(EncodeKey(key));
+    //  iter->rep->Seek(EncodeKey(key));
   return PmemIterGetState(iter);
 }
 
 PmemIterState PmemIterSeekToFirst(PmemIterator* iter) {
-  ScopedStats stats(iter);
-  iter->rep->SeekToFirst();
+    //  iter->rep->SeekToFirst();
   return PmemIterGetState(iter);
 }
 
 PmemIterState PmemIterSeekToLast(PmemIterator* iter) {
-  ScopedStats stats(iter);
-  iter->rep->SeekToLast();
+    //  iter->rep->SeekToLast();
   return PmemIterGetState(iter);
 }
 
 PmemIterState PmemIterNext(PmemIterator* iter, bool skip_current_key_versions) {
-  ScopedStats stats(iter);
+    //  ScopedStats stats(iter);
   // If we're skipping the current key versions, remember the key the
   // iterator was pointing out.
-  std::string old_key;
-  if (skip_current_key_versions && iter->rep->Valid()) {
-    rocksdb::Slice key;
-    rocksdb::Slice ts;
-    if (!SplitKey(iter->rep->key(), &key, &ts)) {
-      PmemIterState state = {0};
-      state.valid = false;
-      state.status = FmtStatus("failed to split mvcc key");
-      return state;
-    }
-    old_key = key.ToString();
-  }
+  // std::string old_key;
+  // if (skip_current_key_versions && iter->rep->Valid()) {
+  //   rocksdb::Slice key;
+  //   rocksdb::Slice ts;
+  //   if (!SplitKey(iter->rep->key(), &key, &ts)) {
+  //     PmemIterState state = {0};
+  //     state.valid = false;
+  //     state.status = FmtStatus("failed to split mvcc key");
+  //     return state;
+  //   }
+  //   old_key = key.ToString();
+  // }
 
-  iter->rep->Next();
+  // iter->rep->Next();
 
-  if (skip_current_key_versions && iter->rep->Valid()) {
-    rocksdb::Slice key;
-    rocksdb::Slice ts;
-    if (!SplitKey(iter->rep->key(), &key, &ts)) {
-      PmemIterState state = {0};
-      state.valid = false;
-      state.status = FmtStatus("failed to split mvcc key");
-      return state;
-    }
-    if (old_key == key) {
-      // We're pointed at a different version of the same key. Fall
-      // back to seeking to the next key.
-      old_key.append("\0", 1);
-      PmemKey db_key;
-      db_key.key = ToPmemSlice(old_key);
-      db_key.wall_time = 0;
-      db_key.logical = 0;
-      iter->rep->Seek(EncodeKey(db_key));
-    }
-  }
+  // if (skip_current_key_versions && iter->rep->Valid()) {
+  //   rocksdb::Slice key;
+  //   rocksdb::Slice ts;
+  //   if (!SplitKey(iter->rep->key(), &key, &ts)) {
+  //     PmemIterState state = {0};
+  //     state.valid = false;
+  //     state.status = FmtStatus("failed to split mvcc key");
+  //     return state;
+  //   }
+  //   if (old_key == key) {
+  //     // We're pointed at a different version of the same key. Fall
+  //     // back to seeking to the next key.
+  //     old_key.append("\0", 1);
+  //     PmemKey db_key;
+  //     db_key.key = ToPmemSlice(old_key);
+  //     db_key.wall_time = 0;
+  //     db_key.logical = 0;
+  //     iter->rep->Seek(EncodeKey(db_key));
+  //   }
+  // }
 
   return PmemIterGetState(iter);
 }
 
 PmemIterState PmemIterPrev(PmemIterator* iter, bool skip_current_key_versions) {
-  ScopedStats stats(iter);
-  // If we're skipping the current key versions, remember the key the
-  // iterator was pointed out.
-  std::string old_key;
-  if (skip_current_key_versions && iter->rep->Valid()) {
-    rocksdb::Slice key;
-    rocksdb::Slice ts;
-    if (SplitKey(iter->rep->key(), &key, &ts)) {
-      old_key = key.ToString();
-    }
-  }
+  // ScopedStats stats(iter);
+  // // If we're skipping the current key versions, remember the key the
+  // // iterator was pointed out.
+  // std::string old_key;
+  // if (skip_current_key_versions && iter->rep->Valid()) {
+  //   rocksdb::Slice key;
+  //   rocksdb::Slice ts;
+  //   if (SplitKey(iter->rep->key(), &key, &ts)) {
+  //     old_key = key.ToString();
+  //   }
+  // }
 
-  iter->rep->Prev();
+  // iter->rep->Prev();
 
-  if (skip_current_key_versions && iter->rep->Valid()) {
-    rocksdb::Slice key;
-    rocksdb::Slice ts;
-    if (SplitKey(iter->rep->key(), &key, &ts)) {
-      if (old_key == key) {
-        // We're pointed at a different version of the same key. Fall
-        // back to seeking to the prev key. In this case, we seek to
-        // the "metadata" key and that back up the iterator.
-        PmemKey db_key;
-        db_key.key = ToPmemSlice(old_key);
-        db_key.wall_time = 0;
-        db_key.logical = 0;
-        iter->rep->Seek(EncodeKey(db_key));
-        if (iter->rep->Valid()) {
-          iter->rep->Prev();
-        }
-      }
-    }
-  }
+  // if (skip_current_key_versions && iter->rep->Valid()) {
+  //   rocksdb::Slice key;
+  //   rocksdb::Slice ts;
+  //   if (SplitKey(iter->rep->key(), &key, &ts)) {
+  //     if (old_key == key) {
+  //       // We're pointed at a different version of the same key. Fall
+  //       // back to seeking to the prev key. In this case, we seek to
+  //       // the "metadata" key and that back up the iterator.
+  //       PmemKey db_key;
+  //       db_key.key = ToPmemSlice(old_key);
+  //       db_key.wall_time = 0;
+  //       db_key.logical = 0;
+  //       iter->rep->Seek(EncodeKey(db_key));
+  //       if (iter->rep->Valid()) {
+  //         iter->rep->Prev();
+  //       }
+  //     }
+  //   }
+  // }
 
   return PmemIterGetState(iter);
 }
@@ -270,18 +229,18 @@ PmemStatus PmemMerge(PmemSlice existing, PmemSlice update, PmemString* new_value
   new_value->len = 0;
 
   cockroach::storage::engine::enginepb::MVCCMetadata meta;
-  if (!meta.ParseFromArray(existing.data, existing.len)) {
-    return ToPmemString("corrupted existing value");
-  }
+  // if (!meta.ParseFromArray(existing.data, existing.len)) {
+  //   return ToPmemString("corrupted existing value");
+  // }
 
-  cockroach::storage::engine::enginepb::MVCCMetadata update_meta;
-  if (!update_meta.ParseFromArray(update.data, update.len)) {
-    return ToPmemString("corrupted update value");
-  }
+  // cockroach::storage::engine::enginepb::MVCCMetadata update_meta;
+  // if (!update_meta.ParseFromArray(update.data, update.len)) {
+  //   return ToPmemString("corrupted update value");
+  // }
 
-  if (!MergeValues(&meta, update_meta, full_merge, NULL)) {
-    return ToPmemString("incompatible merge values");
-  }
+  // if (!MergeValues(&meta, update_meta, full_merge, NULL)) {
+  //   return ToPmemString("incompatible merge values");
+  // }
   return MergeResult(&meta, new_value);
 }
 
