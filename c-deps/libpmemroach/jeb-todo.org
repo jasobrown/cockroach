@@ -1,0 +1,146 @@
+
+* crdb - go-lang 
+** tx-mgmt?
+** engine
+   - Attrs() roachpb.Attributes
+[-] Capacity() (roachpb.StoreCapacity, error)
+[i] Flush() error
+[i] GetStats() (*Stats, error)
+[i] GetEnvStats() (*EnvStats, error)
+[x] GetAuxiliaryDir() string
+[] NewBatch() Batch
+[i] NewReadOnly() ReadWriter
+[] NewWriteOnlyBatch() Batch
+[i] NewSnapshot() Reader
+[x] IngestExternalFiles(ctx context.Context, paths []string, skipWritingSeqNo, allowFileModifications bool) error
+[x] PreIngestDelay(ctx context.Context)
+[x] ApproximateDiskBytes(from, to roachpb.Key) (uint64, error)
+[i] CompactRange(start, end roachpb.Key, forceBottommost bool) error
+[i] OpenFile(filename string) (DBFile, error)
+[i] ReadFile(filename string) ([]byte, error)
+[i] DeleteFile(filename string) error
+[i] DeleteDirAndFiles(dir string) error
+[i] LinkFile(oldname, newname string) error
+[i] CreateCheckpoint(dir string) error
+
+*** ENGINE::STD-WRITER
+
+[x] ApplyBatchRepr(repr []byte, sync bool) error
+[x] Clear(key MVCCKey) error
+[x] SingleClear(key MVCCKey) error
+[x] ClearRange(start, end MVCCKey) error
+[x] ClearIterRange(iter Iterator, start, end MVCCKey) error
+[x] Merge(key MVCCKey, value []byte) error
+[x] Put(key MVCCKey, value []byte) error
+[i] LogData(data []byte) error
+[i] LogLogicalOp(op MVCCLogicalOpType, details MVCCLogicalOpDetails)
+
+*** ENGINE::STD-READER
+
+[x] Close()
+[x] Closed() bool
+[x] Get(key MVCCKey) ([]byte, error)
+[x] GetProto(key MVCCKey, msg protoutil.Message) (ok bool, keyBytes, valBytes int64, err error)
+[x] Iterate(start, end MVCCKey, f func(MVCCKeyValue) (stop bool, err error)) error
+[x] NewIterator(opts IterOptions) Iterator
+
+
+*** ENGINE::STD-READER::ITERATOR
+
+[x] SeekReverse(key MVCCKey)
+[x] Prev()
+[x] PrevKey()
+[x] Key() MVCCKey
+[x] Value() []byte
+[x] ValueProto(msg protoutil.Message) error
+[x] ComputeStats(start, end MVCCKey, nowNanos int64) (enginepb.MVCCStats, error)
+[x] FindSplitKey(start, end, minSplitKey MVCCKey, targetSize int64) (MVCCKey, error)
+[x] MVCCGet(key roachpb.Key, timestamp hlc.Timestamp, opts MVCCGetOptions,) (*roachpb.Value, *roachpb.Intent, error)
+[x] MVCCScan(start, end roachpb.Key, max int64, timestamp hlc.Timestamp, opts MVCCScanOptions,) (kvData []byte, numKVs int64, resumeSpan *roachpb.Span, intents []roachpb.Intent, err error)
+[x] SetUpperBound(roachpb.Key)
+[i] Stats() IteratorStats
+
+*** ENGINE::STD-READER::ITERATOR::SIMPLE_ITERATOR
+
+[x] Close()
+[x] Seek(key MVCCKey)
+[x] Valid() (bool, error)
+[x] Next()
+[x] NextKey()
+[x] UnsafeKey() MVCCKey
+[x] UnsafeValue() []byte
+
+
+*** ENGINE::BATCH
+
+[] Commit(sync bool) error
+[] Distinct() ReadWriter
+[] Empty() bool
+[] Len() int
+[] Repr() []byte
+
+*** ENGINE::BATCH-WRITER
+
+[] ApplyBatchRepr(repr []byte, sync bool) error
+[] Clear(key MVCCKey) error
+[] SingleClear(key MVCCKey) error
+[] ClearRange(start, end MVCCKey) error
+[] ClearIterRange(iter Iterator, start, end MVCCKey) error
+[] Merge(key MVCCKey, value []byte) error
+[] Put(key MVCCKey, value []byte) error
+[] LogData(data []byte) error
+[] LogLogicalOp(op MVCCLogicalOpType, details MVCCLogicalOpDetails)
+
+
+*** ENGINE::BATCH-READER
+
+[] Close()
+[] Closed() bool
+[] Get(key MVCCKey) ([]byte, error)
+[] GetProto(key MVCCKey, msg protoutil.Message) (ok bool, keyBytes, valBytes int64, err error)
+[] Iterate(start, end MVCCKey, f func(MVCCKeyValue) (stop bool, err error)) error
+[] NewIterator(opts IterOptions) Iterator
+
+
+*** ENGINE::BATCH-READER::ITERATOR
+
+[] SeekReverse(key MVCCKey)
+[] Prev()
+[] PrevKey()
+[] Key() MVCCKey
+[] Value() []byte
+[] ValueProto(msg protoutil.Message) error
+[] ComputeStats(start, end MVCCKey, nowNanos int64) (enginepb.MVCCStats, error)
+[] FindSplitKey(start, end, minSplitKey MVCCKey, targetSize int64) (MVCCKey, error)
+[] MVCCGet(key roachpb.Key, timestamp hlc.Timestamp, opts MVCCGetOptions,) (*roachpb.Value, *roachpb.Intent, error)
+[] MVCCScan(start, end roachpb.Key, max int64, timestamp hlc.Timestamp, opts MVCCScanOptions,) (kvData []byte, numKVs int64, resumeSpan *roachpb.Span, intents []roachpb.Intent, err error)
+[] SetUpperBound(roachpb.Key)
+[] Stats() IteratorStats
+
+*** ENGINE::BATCH-READER::ITERATOR::SIMPLE_ITERATOR
+
+[] Close()
+[] Seek(key MVCCKey)
+[] Valid() (bool, error)
+[] Next()
+[] NextKey()
+[] UnsafeKey() MVCCKey
+[] UnsafeValue() []byte
+
+*** BATCH-DISTINCT ?????
+
+* libpmemroach
+** batch
+   - distinct ??
+** read-only ??
+** iterator
+** merging
+** write intent mgmt/merge?
+
+* ppl (pmem persistent layer)
+** dispatcher
+** threads, futures/promises, queues
+** hwloc (for discovering sockets, cpu counts, hyperthreading, NUMA nodes, etc)
+** ART index
+
+
