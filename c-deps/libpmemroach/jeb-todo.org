@@ -1,82 +1,79 @@
 #+STARTUP: showall 
 
 * crdb - go-lang 
-** tx-mgmt?
-** engine [0/20]
-   - [ ] Attrs() roachpb.Attributes
+** crdb tx-mgmt?
+** DONE engine [17/20][85%]
+   - [X] Attrs() roachpb.Attributes
    - [ ] Capacity() (roachpb.StoreCapacity, error)
-   - [ ] Flush() error
-   - [ ] GetStats() (*Stats, error)
-   - [ ] GetEnvStats() (*EnvStats, error)
-   - [ ] GetAuxiliaryDir() string
+   - [X] Flush() error
+   - [X] GetStats() (*Stats, error)
+   - [X] GetEnvStats() (*EnvStats, error)
+   - [X] GetAuxiliaryDir() string
    - [ ] NewBatch() Batch
-   - [ ] NewReadOnly() ReadWriter
+   - [X] NewReadOnly() ReadWriter
    - [ ] NewWriteOnlyBatch() Batch
-   - [ ] NewSnapshot() Reader
-   - [ ] IngestExternalFiles(ctx context.Context, paths)
-   - [ ]string, skipWritingSeqNo, allowFileModifications bool) error
-   - [ ] PreIngestDelay(ctx context.Context)
-   - [ ] ApproximateDiskBytes(from, to roachpb.Key) (uint64, error)
-   - [ ] CompactRange(start, end roachpb.Key, forceBottommost bool) error
-   - [ ] OpenFile(filename string) (DBFile, error)
-   - [ ] ReadFile(filename string) (	- [ ]byte, error)
-   - [ ] DeleteFile(filename string) error
-   - [ ] DeleteDirAndFiles(dir string) error
-   - [ ] LinkFile(oldname, newname string) error
-   - [ ] CreateCheckpoint(dir string) error
+   - [X] NewSnapshot() Reader
+   - [X] IngestExternalFiles(ctx context.Context, paths string, skipWritingSeqNo, allowFileModifications bool) error
+   - [X] PreIngestDelay(ctx context.Context)
+   - [X] ApproximateDiskBytes(from, to roachpb.Key) (uint64, error)
+   - [X] CompactRange(start, end roachpb.Key, forceBottommost bool) error
+   - [X] OpenFile(filename string) (DBFile, error)
+   - [X] ReadFile(filename string) (	) [ ]byte, error)
+   - [X] DeleteFile(filename string) error
+   - [X] DeleteDirAndFiles(dir string) error
+   - [X] LinkFile(oldname, newname string) error
+   - [X] CreateCheckpoint(dir string) error
 
-** TODO ENGINE::STD-WRITER [0/9]
-   - [ ] ApplyBatchRepr(repr
-   - [ ]byte, sync bool) error
-   - [ ] Clear(key MVCCKey) error
-   - [ ] SingleClear(key MVCCKey) error
-   - [ ] ClearRange(start, end MVCCKey) error
-   - [ ] ClearIterRange(iter Iterator, start, end MVCCKey) error
-   - [ ] Merge(key MVCCKey, value 	- [ ]byte) error
-   - [ ] Put(key MVCCKey, value 	- [ ]byte) error
-   - [ ] LogData(data 	- [ ]byte) error
-   - [ ] LogLogicalOp(op MVCCLogicalOpType, details MVCCLogicalOpDetails)
+** DONE ENGINE::STD-WRITER [9/9][100%]
+   - [X] ApplyBatchRepr(repr []byte, sync bool) error
+   - [X] Clear(key MVCCKey) error
+   - [X] SingleClear(key MVCCKey) error
+   - [X] ClearRange(start, end MVCCKey) error
+   - [X] ClearIterRange(iter Iterator, start, end MVCCKey) error
+   - [X] Merge(key MVCCKey, value 	- [ ]byte) error
+   - [X] Put(key MVCCKey, value 	- [ ]byte) error
+   - [X] LogData(data []byte) error
+   - [X] LogLogicalOp(op MVCCLogicalOpType, details MVCCLogicalOpDetails)
 
-** TODO ENGINE::STD-READER [0/6]
-   - [ ] Close()
-   - [ ] Closed() bool
-   - [ ] Get(key MVCCKey) (	- [ ]byte, error)
-   - [ ] GetProto(key MVCCKey, msg protoutil.Message) (ok bool, keyBytes, valBytes int64, err error)
-   - [ ] Iterate(start, end MVCCKey, f func(MVCCKeyValue) (stop bool, err error)) error
-   - [ ] NewIterator(opts IterOptions) Iterator
+** DONE ENGINE::STD-READER [6/6][100%]
+   - [X] Close()
+   - [X] Closed() bool
+   - [X] Get(key MVCCKey) (	- [ ]byte, error)
+   - [X] GetProto(key MVCCKey, msg protoutil.Message) (ok bool, keyBytes, valBytes int64, err error)
+   - [X] Iterate(start, end MVCCKey, f func(MVCCKeyValue) (stop bool, err error)) error
+   - [X] NewIterator(opts IterOptions) Iterator
 
-** TODO ENGINE::STD-READER::ITERATOR [0/12]
-   - [ ] SeekReverse(key MVCCKey)
-   - [ ] Prev()
-   - [ ] PrevKey()
-   - [ ] Key() MVCCKey
-   - [ ] Value() 	- [ ]byte
-   - [ ] ValueProto(msg protoutil.Message) error
-   - [ ] ComputeStats(start, end MVCCKey, nowNanos int64) (enginepb.MVCCStats, error)
-   - [ ] FindSplitKey(start, end, minSplitKey MVCCKey, targetSize int64) (MVCCKey, error)
-   - [ ] MVCCGet(key roachpb.Key, timestamp hlc.Timestamp, opts MVCCGetOptions,) (*roachpb.Value, *roachpb.Intent, error)
-   - [ ] MVCCScan(start, end roachpb.Key, max int64, timestamp hlc.Timestamp, opts MVCCScanOptions,) (kvData 	- [ ]byte, numKVs int64, resumeSpan *roachpb.Span, intents 	- [ ]roachpb.Intent, err error)
-   - [ ] SetUpperBound(roachpb.Key)
-   - [ ] Stats() IteratorStats
+** DONE ENGINE::STD-READER::ITERATOR [12/12][100%]
+   - [X] SeekReverse(key MVCCKey)
+   - [X] Prev()
+   - [X] PrevKey()
+   - [X] Key() MVCCKey
+   - [X] Value() 	- [ ]byte
+   - [X] ValueProto(msg protoutil.Message) error
+   - [X] ComputeStats(start, end MVCCKey, nowNanos int64) (enginepb.MVCCStats, error)
+   - [X] FindSplitKey(start, end, minSplitKey MVCCKey, targetSize int64) (MVCCKey, error)
+   - [X] MVCCGet(key roachpb.Key, timestamp hlc.Timestamp, opts MVCCGetOptions,) (*roachpb.Value, *roachpb.Intent, error)
+   - [X] MVCCScan(start, end roachpb.Key, max int64, timestamp hlc.Timestamp, opts MVCCScanOptions,) (kvData 	- [ ]byte, numKVs int64, resumeSpan *roachpb.Span, intents 	- [ ]roachpb.Intent, err error)
+   - [X] SetUpperBound(roachpb.Key)
+   - [X] Stats() IteratorStats
 
-** TODO ENGINE::STD-READER::ITERATOR::SIMPLE_ITERATOR [0/7]
-   - [ ] Close()
-   - [ ] Seek(key MVCCKey)
-   - [ ] Valid() (bool, error)
-   - [ ] Next()
-   - [ ] NextKey()
-   - [ ] UnsafeKey() MVCCKey
-   - [ ] UnsafeValue()
-   - [ ]byte
+** DONE ENGINE::STD-READER::ITERATOR::SIMPLE_ITERATOR [7/7][100%]
+   - [X] Close()
+   - [X] Seek(key MVCCKey)
+   - [X] Valid() (bool, error)
+   - [X] Next()
+   - [X] NextKey()
+   - [X] UnsafeKey() MVCCKey
+   - [X] UnsafeValue()
 
-** TODO ENGINE::BATCH [0/5]
+** TODO ENGINE::BATCH [0/5][%]
    - [ ] Commit(sync bool) error
    - [ ] Distinct() ReadWriter
    - [ ] Empty() bool
    - [ ] Len() int
    - [ ] Repr() 	- [ ]byte
 
-** TODO ENGINE::BATCH-WRITER [0/9]
+** TODO ENGINE::BATCH-WRITER [0/9][%]
    - [ ] ApplyBatchRepr(repr 	- [ ]byte, sync bool) error
    - [ ] Clear(key MVCCKey) error
    - [ ] SingleClear(key MVCCKey) error
@@ -87,7 +84,7 @@
    - [ ] LogData(data 	- [ ]byte) error
    - [ ] LogLogicalOp(op MVCCLogicalOpType, details MVCCLogicalOpDetails)
 
-** TODO ENGINE::BATCH-READER [0/6]
+** TODO ENGINE::BATCH-READER [0/6][%]
    - [ ] Close()
    - [ ] Closed() bool
    - [ ] Get(key MVCCKey) (	- [ ]byte, error)
@@ -95,7 +92,7 @@
    - [ ] Iterate(start, end MVCCKey, f func(MVCCKeyValue) (stop bool, err error)) error
    - [ ] NewIterator(opts IterOptions) Iterator
 
-** TODO ENGINE::BATCH-READER::ITERATOR [0/13]
+** TODO ENGINE::BATCH-READER::ITERATOR [0/13][%]
    - [ ] SeekReverse(key MVCCKey)
    - [ ] Prev()
    - [ ] PrevKey()
@@ -110,7 +107,7 @@
    - [ ] SetUpperBound(roachpb.Key)
    - [ ] Stats() IteratorStats
 
-** TODO ENGINE::BATCH-READER::ITERATOR::SIMPLE_ITERATOR [0/7]
+** TODO ENGINE::BATCH-READER::ITERATOR::SIMPLE_ITERATOR [0/7][0%]
    - [ ] Close()
    - [ ] Seek(key MVCCKey)
    - [ ] Valid() (bool, error)
@@ -129,10 +126,22 @@
 ** merging
 ** write intent mgmt/merge?
 
-* ppl (pmem persistent layer)
-** dispatcher
-** threads, futures/promises, queues
-** hwloc (for discovering sockets, cpu counts, hyperthreading, NUMA nodes, etc)
-** ART index
+* TODO ppl (pmem persistent layer)[0/4][0%]
+** TODO pmem use
+   - [ ] pool creation / setup (per NUMA-node)
+   - [ ] how-to allocate blocks and get pointer address - not sure how 'c++' this is (maybe just plain old c workds better)
+   - [ ] figure out how best to handle pmem transactions
+** TODO dispatcher [0/5][0%]
+   - [ ] dispatch algo
+   - [ ] thread-per-core assignments (based on nearness to NUMA node of target data range)
+   - [ ] hwloc (for discovering sockets, cpu counts, hyperthreading, NUMA nodes, etc)
+   - [ ] futures/promise use (probably use folly)
+   - [ ] queue for dispatch to single thread per range (probably use folly)
+** TODO ART index [0/3][0%]
+   - [ ] reread paper
+   - [ ] implement
+   - [ ] plan serialization and persistence trickery
+** TODO serialization [0/1][0%]
+   - [ ] determine if anything special needs to happen wrt serialization
 
 
