@@ -2,133 +2,124 @@
 
 * crdb - go-lang 
 ** tx-mgmt?
-** engine
-*** TODO Attrs() roachpb.Attributes
-*** TODO Capacity() (roachpb.StoreCapacity, error)
-*** TODO Flush() error
-*** TODO GetStats() (*Stats, error)
-*** TODO GetEnvStats() (*EnvStats, error)
-*** TODO GetAuxiliaryDir() string
-*** TODO NewBatch() Batch
-*** TODO NewReadOnly() ReadWriter
-*** TODO NewWriteOnlyBatch() Batch
-*** TODO NewSnapshot() Reader
-*** TODO IngestExternalFiles(ctx context.Context, paths *** TODOstring, skipWritingSeqNo, allowFileModifications bool) error
-*** TODO PreIngestDelay(ctx context.Context)
-*** TODO ApproximateDiskBytes(from, to roachpb.Key) (uint64, error)
-*** TODO CompactRange(start, end roachpb.Key, forceBottommost bool) error
-*** TODO OpenFile(filename string) (DBFile, error)
-*** TODO ReadFile(filename string) (*** TODObyte, error)
-*** TODO DeleteFile(filename string) error
-*** TODO DeleteDirAndFiles(dir string) error
-*** TODO LinkFile(oldname, newname string) error
-*** TODO CreateCheckpoint(dir string) error
+** engine [0/20]
+   - [ ] Attrs() roachpb.Attributes
+   - [ ] Capacity() (roachpb.StoreCapacity, error)
+   - [ ] Flush() error
+   - [ ] GetStats() (*Stats, error)
+   - [ ] GetEnvStats() (*EnvStats, error)
+   - [ ] GetAuxiliaryDir() string
+   - [ ] NewBatch() Batch
+   - [ ] NewReadOnly() ReadWriter
+   - [ ] NewWriteOnlyBatch() Batch
+   - [ ] NewSnapshot() Reader
+   - [ ] IngestExternalFiles(ctx context.Context, paths)
+   - [ ]string, skipWritingSeqNo, allowFileModifications bool) error
+   - [ ] PreIngestDelay(ctx context.Context)
+   - [ ] ApproximateDiskBytes(from, to roachpb.Key) (uint64, error)
+   - [ ] CompactRange(start, end roachpb.Key, forceBottommost bool) error
+   - [ ] OpenFile(filename string) (DBFile, error)
+   - [ ] ReadFile(filename string) (	- [ ]byte, error)
+   - [ ] DeleteFile(filename string) error
+   - [ ] DeleteDirAndFiles(dir string) error
+   - [ ] LinkFile(oldname, newname string) error
+   - [ ] CreateCheckpoint(dir string) error
 
-*** TODO ENGINE::STD-WRITER
+** TODO ENGINE::STD-WRITER [0/9]
+   - [ ] ApplyBatchRepr(repr
+   - [ ]byte, sync bool) error
+   - [ ] Clear(key MVCCKey) error
+   - [ ] SingleClear(key MVCCKey) error
+   - [ ] ClearRange(start, end MVCCKey) error
+   - [ ] ClearIterRange(iter Iterator, start, end MVCCKey) error
+   - [ ] Merge(key MVCCKey, value 	- [ ]byte) error
+   - [ ] Put(key MVCCKey, value 	- [ ]byte) error
+   - [ ] LogData(data 	- [ ]byte) error
+   - [ ] LogLogicalOp(op MVCCLogicalOpType, details MVCCLogicalOpDetails)
 
-*** TODO ApplyBatchRepr(repr *** TODObyte, sync bool) error
-*** TODO Clear(key MVCCKey) error
-*** TODO SingleClear(key MVCCKey) error
-*** TODO ClearRange(start, end MVCCKey) error
-*** TODO ClearIterRange(iter Iterator, start, end MVCCKey) error
-*** TODO Merge(key MVCCKey, value *** TODObyte) error
-*** TODO Put(key MVCCKey, value *** TODObyte) error
-*** TODO LogData(data *** TODObyte) error
-*** TODO LogLogicalOp(op MVCCLogicalOpType, details MVCCLogicalOpDetails)
+** TODO ENGINE::STD-READER [0/6]
+   - [ ] Close()
+   - [ ] Closed() bool
+   - [ ] Get(key MVCCKey) (	- [ ]byte, error)
+   - [ ] GetProto(key MVCCKey, msg protoutil.Message) (ok bool, keyBytes, valBytes int64, err error)
+   - [ ] Iterate(start, end MVCCKey, f func(MVCCKeyValue) (stop bool, err error)) error
+   - [ ] NewIterator(opts IterOptions) Iterator
 
-*** TODO ENGINE::STD-READER
+** TODO ENGINE::STD-READER::ITERATOR [0/12]
+   - [ ] SeekReverse(key MVCCKey)
+   - [ ] Prev()
+   - [ ] PrevKey()
+   - [ ] Key() MVCCKey
+   - [ ] Value() 	- [ ]byte
+   - [ ] ValueProto(msg protoutil.Message) error
+   - [ ] ComputeStats(start, end MVCCKey, nowNanos int64) (enginepb.MVCCStats, error)
+   - [ ] FindSplitKey(start, end, minSplitKey MVCCKey, targetSize int64) (MVCCKey, error)
+   - [ ] MVCCGet(key roachpb.Key, timestamp hlc.Timestamp, opts MVCCGetOptions,) (*roachpb.Value, *roachpb.Intent, error)
+   - [ ] MVCCScan(start, end roachpb.Key, max int64, timestamp hlc.Timestamp, opts MVCCScanOptions,) (kvData 	- [ ]byte, numKVs int64, resumeSpan *roachpb.Span, intents 	- [ ]roachpb.Intent, err error)
+   - [ ] SetUpperBound(roachpb.Key)
+   - [ ] Stats() IteratorStats
 
-*** TODO Close()
-*** TODO Closed() bool
-*** TODO Get(key MVCCKey) (*** TODObyte, error)
-*** TODO GetProto(key MVCCKey, msg protoutil.Message) (ok bool, keyBytes, valBytes int64, err error)
-*** TODO Iterate(start, end MVCCKey, f func(MVCCKeyValue) (stop bool, err error)) error
-*** TODO NewIterator(opts IterOptions) Iterator
+** TODO ENGINE::STD-READER::ITERATOR::SIMPLE_ITERATOR [0/7]
+   - [ ] Close()
+   - [ ] Seek(key MVCCKey)
+   - [ ] Valid() (bool, error)
+   - [ ] Next()
+   - [ ] NextKey()
+   - [ ] UnsafeKey() MVCCKey
+   - [ ] UnsafeValue()
+   - [ ]byte
 
+** TODO ENGINE::BATCH [0/5]
+   - [ ] Commit(sync bool) error
+   - [ ] Distinct() ReadWriter
+   - [ ] Empty() bool
+   - [ ] Len() int
+   - [ ] Repr() 	- [ ]byte
 
-*** TODO ENGINE::STD-READER::ITERATOR
+** TODO ENGINE::BATCH-WRITER [0/9]
+   - [ ] ApplyBatchRepr(repr 	- [ ]byte, sync bool) error
+   - [ ] Clear(key MVCCKey) error
+   - [ ] SingleClear(key MVCCKey) error
+   - [ ] ClearRange(start, end MVCCKey) error
+   - [ ] ClearIterRange(iter Iterator, start, end MVCCKey) error
+   - [ ] Merge(key MVCCKey, value 	- [ ]byte) error
+   - [ ] Put(key MVCCKey, value 	- [ ]byte) error
+   - [ ] LogData(data 	- [ ]byte) error
+   - [ ] LogLogicalOp(op MVCCLogicalOpType, details MVCCLogicalOpDetails)
 
-*** TODO SeekReverse(key MVCCKey)
-*** TODO Prev()
-*** TODO PrevKey()
-*** TODO Key() MVCCKey
-*** TODO Value() *** TODObyte
-*** TODO ValueProto(msg protoutil.Message) error
-*** TODO ComputeStats(start, end MVCCKey, nowNanos int64) (enginepb.MVCCStats, error)
-*** TODO FindSplitKey(start, end, minSplitKey MVCCKey, targetSize int64) (MVCCKey, error)
-*** TODO MVCCGet(key roachpb.Key, timestamp hlc.Timestamp, opts MVCCGetOptions,) (*roachpb.Value, *roachpb.Intent, error)
-*** TODO MVCCScan(start, end roachpb.Key, max int64, timestamp hlc.Timestamp, opts MVCCScanOptions,) (kvData *** TODObyte, numKVs int64, resumeSpan *roachpb.Span, intents *** TODOroachpb.Intent, err error)
-*** TODO SetUpperBound(roachpb.Key)
-*** TODO Stats() IteratorStats
+** TODO ENGINE::BATCH-READER [0/6]
+   - [ ] Close()
+   - [ ] Closed() bool
+   - [ ] Get(key MVCCKey) (	- [ ]byte, error)
+   - [ ] GetProto(key MVCCKey, msg protoutil.Message) (ok bool, keyBytes, valBytes int64, err error)
+   - [ ] Iterate(start, end MVCCKey, f func(MVCCKeyValue) (stop bool, err error)) error
+   - [ ] NewIterator(opts IterOptions) Iterator
 
-*** TODO ENGINE::STD-READER::ITERATOR::SIMPLE_ITERATOR
+** TODO ENGINE::BATCH-READER::ITERATOR [0/13]
+   - [ ] SeekReverse(key MVCCKey)
+   - [ ] Prev()
+   - [ ] PrevKey()
+   - [ ] Key() MVCCKey
+   - [ ] Value() 
+   - [ ] byte
+   - [ ] ValueProto(msg protoutil.Message) error
+   - [ ] ComputeStats(start, end MVCCKey, nowNanos int64) (enginepb.MVCCStats, error)
+   - [ ] FindSplitKey(start, end, minSplitKey MVCCKey, targetSize int64) (MVCCKey, error)
+   - [ ] MVCCGet(key roachpb.Key, timestamp hlc.Timestamp, opts MVCCGetOptions,) (*roachpb.Value, *roachpb.Intent, error)
+   - [ ] MVCCScan(start, end roachpb.Key, max int64, timestamp hlc.Timestamp, opts MVCCScanOptions,) (kvData 	- [ ]byte, numKVs int64, resumeSpan *roachpb.Span, intents 	- [ ]roachpb.Intent, err error)
+   - [ ] SetUpperBound(roachpb.Key)
+   - [ ] Stats() IteratorStats
 
-*** TODO Close()
-*** TODO Seek(key MVCCKey)
-*** TODO Valid() (bool, error)
-*** TODO Next()
-*** TODO NextKey()
-*** TODO UnsafeKey() MVCCKey
-*** TODO UnsafeValue() *** TODObyte
+** TODO ENGINE::BATCH-READER::ITERATOR::SIMPLE_ITERATOR [0/7]
+   - [ ] Close()
+   - [ ] Seek(key MVCCKey)
+   - [ ] Valid() (bool, error)
+   - [ ] Next()
+   - [ ] NextKey()
+   - [ ] UnsafeKey() MVCCKey
+   - [ ] UnsafeValue() 	- [ ]byte
 
-
-*** TODO ENGINE::BATCH
-
-*** TODO Commit(sync bool) error
-*** TODO Distinct() ReadWriter
-*** TODO Empty() bool
-*** TODO Len() int
-*** TODO Repr() *** TODObyte
-
-*** TODO ENGINE::BATCH-WRITER
-
-*** TODO ApplyBatchRepr(repr *** TODObyte, sync bool) error
-*** TODO Clear(key MVCCKey) error
-*** TODO SingleClear(key MVCCKey) error
-*** TODO ClearRange(start, end MVCCKey) error
-*** TODO ClearIterRange(iter Iterator, start, end MVCCKey) error
-*** TODO Merge(key MVCCKey, value *** TODObyte) error
-*** TODO Put(key MVCCKey, value *** TODObyte) error
-*** TODO LogData(data *** TODObyte) error
-*** TODO LogLogicalOp(op MVCCLogicalOpType, details MVCCLogicalOpDetails)
-
-
-*** TODO ENGINE::BATCH-READER
-
-*** TODO Close()
-*** TODO Closed() bool
-*** TODO Get(key MVCCKey) (*** TODObyte, error)
-*** TODO GetProto(key MVCCKey, msg protoutil.Message) (ok bool, keyBytes, valBytes int64, err error)
-*** TODO Iterate(start, end MVCCKey, f func(MVCCKeyValue) (stop bool, err error)) error
-*** TODO NewIterator(opts IterOptions) Iterator
-
-
-*** TODO ENGINE::BATCH-READER::ITERATOR
-
-*** TODO SeekReverse(key MVCCKey)
-*** TODO Prev()
-*** TODO PrevKey()
-*** TODO Key() MVCCKey
-*** TODO Value() *** TODObyte
-*** TODO ValueProto(msg protoutil.Message) error
-*** TODO ComputeStats(start, end MVCCKey, nowNanos int64) (enginepb.MVCCStats, error)
-*** TODO FindSplitKey(start, end, minSplitKey MVCCKey, targetSize int64) (MVCCKey, error)
-*** TODO MVCCGet(key roachpb.Key, timestamp hlc.Timestamp, opts MVCCGetOptions,) (*roachpb.Value, *roachpb.Intent, error)
-*** TODO MVCCScan(start, end roachpb.Key, max int64, timestamp hlc.Timestamp, opts MVCCScanOptions,) (kvData *** TODObyte, numKVs int64, resumeSpan *roachpb.Span, intents *** TODOroachpb.Intent, err error)
-*** TODO SetUpperBound(roachpb.Key)
-*** TODO Stats() IteratorStats
-
-*** TODO ENGINE::BATCH-READER::ITERATOR::SIMPLE_ITERATOR
-
-*** TODO Close()
-*** TODO Seek(key MVCCKey)
-*** TODO Valid() (bool, error)
-*** TODO Next()
-*** TODO NextKey()
-*** TODO UnsafeKey() MVCCKey
-*** TODO UnsafeValue() *** TODObyte
-
-*** TODO BATCH-DISTINCT ?????
+** TODO BATCH-DISTINCT ?????
 
 * libpmemroach
 ** batch
