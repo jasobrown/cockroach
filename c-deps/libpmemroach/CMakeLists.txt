@@ -20,13 +20,13 @@ cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
 project(pmemroachlib)
 
 add_library(pmemroach
-  db.cc
-  encoding.cc
-  engine.cc
-  godefs.cc
-  iterator.cc
-  merge.cc
-  mvcc.cc
+  src/db.cc
+  src/encoding.cc
+  src/engine.cc
+  src/godefs.cc
+  src/iterator.cc
+  src/merge.cc
+  src/mvcc.cc
   # protos/roachpb/data.pb.cc
   # protos/roachpb/internal.pb.cc
   # protos/roachpb/metadata.pb.cc
@@ -41,9 +41,37 @@ target_include_directories(pmemroach
   PUBLIC  ./include
   PRIVATE ../protobuf/src
   PRIVATE protos
+  PRIVATE "/opt/dev/cpp/folly/build/default/opt/dev/cockroach/19.1/native/x86_64-pc-linux-gnu/folly/include"
+  PRIVATE "/opt/dev/cockroach/19.1/native/x86_64-pc-linux-gnu/libpmemobj-cpp/include"
 )
 
-target_link_libraries(pmemroach)
+target_link_libraries(pmemroach
+  pthread
+  # would prefer to use my own boost rather than the system, but ...
+#  /opt/dev/cockroach/19.1/native/x86_64-pc-linux-gnu/boost/lib/libboost_context.a
+#  /opt/dev/cockroach/19.1/native/x86_64-pc-linux-gnu/boost/lib/libboost_thread.a
+#  /opt/dev/cockroach/19.1/native/x86_64-pc-linux-gnu/boost/lib/libboost_system.a
+  /opt/dev/cpp/folly/build/default/opt/dev/cockroach/19.1/native/x86_64-pc-linux-gnu/folly/lib/libfolly.a
+  glog
+  /usr/lib/x86_64-linux-gnu/libiberty.a
+  /usr/lib/x86_64-linux-gnu/libdouble-conversion.a
+  gflags
+  dl
+  atomic
+  boost_context
+  boost_thread
+  boost_system
+  event
+  hwloc
+
+  /opt/dev/cockroach/19.1/native/x86_64-pc-linux-gnu/pmdk/src/nondebug/libpmem.so
+  /opt/dev/cockroach/19.1/native/x86_64-pc-linux-gnu/pmdk/src/nondebug/libpmemobj.so
+  ndctl
+  daxctl
+)
+
+# TODO(jeb) maybe remove this for 'real' builds
+set(CMAKE_BUILD_TYPE Debug)
 
 set_target_properties(pmemroach PROPERTIES
   CXX_STANDARD 14
@@ -56,9 +84,9 @@ enable_testing()
 
 # List of tests to build and run.
 set(tests
-  db_test.cc
-  encoding_test.cc
-  merge_test.cc
+  src/db_test.cc
+  src/encoding_test.cc
+  src/merge_test.cc
 )
 
 # "test" doesn't depend on the actual tests. Let's add a "check" target
@@ -87,7 +115,7 @@ foreach(tsrc ${tests})
   endif()
 
   # Use testutils.
-  add_executable(${tname} ${tsrc} testutils.cc)
+  add_executable(${tname} ${tsrc} src/testutils.cc)
 
 	# Set includes/libraries/properties.
   target_include_directories(${tname}

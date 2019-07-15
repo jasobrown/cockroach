@@ -5,7 +5,7 @@
 Code is formatted using [clang-format](https://clang.llvm.org/docs/ClangFormat.html).
 
 To install:
-* download [LLVM  5.0 for your OS/arch](http://releases.llvm.org/download.html#5.0.0)
+* download [LLVM  7.0 for your OS/arch](http://releases.llvm.org/download.html#7.0.0)
 * extract archive
 * place the archive's `bin/clang-format` in your path
 
