@@ -1,7 +1,7 @@
 #+STARTUP: showall 
 
-* crdb - go-lang 
-** crdb tx-mgmt?
+* TODO crdb - go-lang [5/12][41%]
+** TODO crdb tx-mgmt?
 ** DONE engine [17/20][85%]
    - [X] Attrs() roachpb.Attributes
    - [ ] Capacity() (roachpb.StoreCapacity, error)
@@ -118,15 +118,33 @@
 
 ** TODO BATCH-DISTINCT ?????
 
-* libpmemroach
-** batch
+* TODO libpmemroach [0/6][0%]
+** TODO prep work
+   - [ ] determine what i need to pull from libroach
+   - [ ] iterators? can I do them all at th go-lang level, or do I need magic at the c++-level
+** TODO batch
    - distinct ??
-** read-only ??
-** iterator
-** merging
-** write intent mgmt/merge?
+** TODO read-only ??
+** TODO iterator
+** TODO merging
+** TODO write intent mgmt/merge?
+** TODO build[0/2][0%]
+   - [ ] static vs dynamic (shared) libraries
+   - [ ] what do I actually need to build in-tree (crdb) vs what libs deployed on machine (either hand-installed or system package mgr)
 
-* TODO ppl (pmem persistent layer)[0/4][0%]
+
+* TODO ppl (pmem persistent layer)[0/5][0%]
+** TODO prep work[4/10]/[40%]
+   - [X] figure out queues & futures/promises
+   - [X] figure out pmdk/libpmemobj++ use (pools, allocators, transactions)
+   - [X] does c++ have anything java's streams APIs, where you writeInt() to a backing buffer?
+   - [-] determine how to store pointers & buffers (and how to serialize/deserialize)
+   - [X] figure out determining pmem-pool->NUMA node and how to map threads to that socket
+   - [ ] figure out how best to partition data - do I ignore resharding and just preshard all the things?
+   - [ ] figure out all the uses of rocksdb in crdb
+   - [ ] figure out how/what to write out 
+   - [ ] figure out how to handle multiple versions of a row
+   - [ ] figure out how to handle mvcc data 
 ** TODO pmem use
    - [ ] pool creation / setup (per NUMA-node)
    - [ ] how-to allocate blocks and get pointer address - not sure how 'c++' this is (maybe just plain old c workds better)
@@ -135,13 +153,21 @@
    - [ ] dispatch algo
    - [ ] thread-per-core assignments (based on nearness to NUMA node of target data range)
    - [ ] hwloc (for discovering sockets, cpu counts, hyperthreading, NUMA nodes, etc)
-   - [ ] futures/promise use (probably use folly)
-   - [ ] queue for dispatch to single thread per range (probably use folly)
+   - [ ] futures/promise use
+   - [ ] queue for dispatch to single thread per range
 ** TODO ART index [0/3][0%]
    - [ ] reread paper
    - [ ] implement
    - [ ] plan serialization and persistence trickery
-** TODO serialization [0/1][0%]
+** TODO serialization [0/3][0%]
    - [ ] determine if anything special needs to happen wrt serialization
 
+
+
+schedule
+- July - exploration - c++/golang/pmdk
+- August - ppl
+- September - libpmemroach & golang engine
+- Oct 1 perf testing (& bug fixing & finishing in a rush!)
+- Oct 27 CONF DATE
 

@@ -1,0 +1,13 @@
+cockroach
+
+* libpmemroach
+** pmdk (1.6/1.7)
+** libpmemobj++
+*** tbb (optional)
+** folly
+*** libatomic
+*** boost
+*** libevent
+*** dl
+*** glog/gflags
+** hwloc
