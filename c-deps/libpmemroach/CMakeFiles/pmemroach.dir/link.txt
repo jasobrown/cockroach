@@ -1,2 +1,0 @@
-/usr/bin/ar qc libpmemroach.a  CMakeFiles/pmemroach.dir/db.cc.o CMakeFiles/pmemroach.dir/engine.cc.o CMakeFiles/pmemroach.dir/godefs.cc.o CMakeFiles/pmemroach.dir/iterator.cc.o
-/usr/bin/ranlib libpmemroach.a

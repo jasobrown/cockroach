@@ -1,5 +1,0 @@
-if(EXISTS "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/db_test[1]_tests.cmake")
-  include("/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/db_test[1]_tests.cmake")
-else()
-  add_test(db_test_NOT_BUILT db_test_NOT_BUILT)
-endif()

@@ -1,1 +1,0 @@
-/usr/bin/clang++-7    -rdynamic CMakeFiles/db_test.dir/db_test.cc.o CMakeFiles/db_test.dir/testutils.cc.o  -o db_test libpmemroach.a googletest/libgtest_main.a -lpthread -lrt googletest/libgtest.a -pthread 

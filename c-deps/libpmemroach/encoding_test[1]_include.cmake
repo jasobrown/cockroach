@@ -1,5 +1,0 @@
-if(EXISTS "/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/encoding_test[1]_tests.cmake")
-  include("/opt/dev/cockroach/19.1/src/github.com/cockroachdb/cockroach/c-deps/libpmemroach/encoding_test[1]_tests.cmake")
-else()
-  add_test(encoding_test_NOT_BUILT encoding_test_NOT_BUILT)
-endif()
