@@ -145,16 +145,16 @@
    - [ ] figure out how/what to write out 
    - [ ] figure out how to handle multiple versions of a row
    - [ ] figure out how to handle mvcc data 
-** TODO pmem use
-   - [ ] pool creation / setup (per NUMA-node)
+** TODO pmem use[2/3][66%]
+   - [X] pool creation / setup (per NUMA-node)
    - [ ] how-to allocate blocks and get pointer address - not sure how 'c++' this is (maybe just plain old c workds better)
-   - [ ] figure out how best to handle pmem transactions
-** TODO dispatcher [0/5][0%]
+   - [X] figure out how best to handle pmem transactions
+** TODO dispatcher [4/5][80%]
    - [ ] dispatch algo
-   - [ ] thread-per-core assignments (based on nearness to NUMA node of target data range)
-   - [ ] hwloc (for discovering sockets, cpu counts, hyperthreading, NUMA nodes, etc)
-   - [ ] futures/promise use
-   - [ ] queue for dispatch to single thread per range
+   - [X] thread-per-core assignments (based on nearness to NUMA node of target data range)
+   - [X] hwloc (for discovering sockets, cpu counts, hyperthreading, NUMA nodes, etc)
+   - [X] futures/promise use
+   - [X] queue for dispatch to single thread per range
 ** TODO ART index [0/3][0%]
    - [ ] reread paper
    - [ ] implement

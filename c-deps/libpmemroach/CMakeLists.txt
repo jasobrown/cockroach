@@ -1,32 +1,29 @@
+# Copyright 2019 Netflix
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     http:#www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-# implied. See the License for the specific language governing
+# implied.  See the License for the specific language governing
 # permissions and limitations under the License.
-
-# NB: Despite CMake's portability, this build configuration makes no attempt to
-# support non-GCC-like compilers.
-
-# The CXX_STANDARD property was introduced in version 3.1
-# 3.3 fixes https://cmake.org/cmake/help/v3.3/policy/CMP0060.html
-cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
 
 project(pmemroachlib)
 
 add_library(pmemroach
-  src/db.cc
-  src/encoding.cc
-  src/engine.cc
-  src/godefs.cc
-  src/iterator.cc
-  src/merge.cc
-  src/mvcc.cc
+  src/pml/dispacther.cpp
+  # src/db.cc
+  # src/encoding.cc
+  # src/engine.cc
+  # src/godefs.cc
+  # src/iterator.cc
+  # src/merge.cc
+  # src/mvcc.cc
   # protos/roachpb/data.pb.cc
   # protos/roachpb/internal.pb.cc
   # protos/roachpb/metadata.pb.cc
@@ -77,16 +74,16 @@ set_target_properties(pmemroach PROPERTIES
   CXX_STANDARD 14
   CXX_STANDARD_REQUIRED YES
   CXX_EXTENSIONS NO
-  COMPILE_OPTIONS "-Werror;-Wall;-Wno-sign-compare"
+#  COMPILE_OPTIONS "-Werror;-Wall;-Wno-sign-compare"
 )
 
 enable_testing()
 
 # List of tests to build and run.
 set(tests
-  src/db_test.cc
-  src/encoding_test.cc
-  src/merge_test.cc
+  # src/db_test.cc
+  # src/encoding_test.cc
+  # src/merge_test.cc
 )
 
 # "test" doesn't depend on the actual tests. Let's add a "check" target
