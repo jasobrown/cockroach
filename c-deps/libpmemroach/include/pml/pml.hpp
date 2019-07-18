@@ -52,22 +52,56 @@ class PoolRoot {
 
     //    persistent_ptr<PoolUserRoot> GetUserRoot();
 
-  private:
+    //  private:
     p<uint64_t> userRootOffset;
     p<uint64_t> heapSize;
     //    persistent_ptr<PoolUserRoot> userRoot;
 };
 
-enum class Action { READ, WRITE };
+    /*
+      I want:
+      - a Promise
+          - if i pass in Promise to fn, I need to templatize the return
+      type
+          - if i don't pass in, still need to templatize the response,
+      but then i set it into the promise
+      - a PmemStatus as return
 
-struct DispatchEvent {
-    Action action;
-    int value;
-    folly::Promise<int> promise;
-};
+      // java
+      String in = "in";
+      Callable<String> c = new Callable { String call(return
+      in.reverse()); }
+      Future<String> f = executor.submit(c);
+      f.wait();
+
+      // c++
+      PmemGet(DBKey, DBString *) { // DBString is an out value;
+        PmemResult res = dispatch.dispatch(key, [&] ()doPmemRead);
+        DBString == res.data;
+      }
+
+      template<typename T>
+      Future<T> Dispatcher::dispatch(DBKey, std::fn<T(pool, promise)>) {
+      auto promiseFuture = makeContract<String>()
+        auto promise = std::get(1);
+        queue.blockingWrite([&] { doPmemRead(key, promise);   } // promise *must* be fulfilled on the consumer thread
+        return std::get(0);
+        // copy out to DBString or whatever to return ...
+      }
+      
+      // on the consumer thread
+      doPmemRead(PmemKey key, pool<PoolRoot> pool, Promise p) {
+        // do the real read from pmem here ... need pointer to
+      pool/root of primary index.
+        p.set_value(key.reverse());
+      }
+     */
+
     
+
+
 struct QueueContext {
-    std::shared_ptr<folly::MPMCQueue<DispatchEvent>> queue;
+    std::shared_ptr<folly::MPMCQueue<int>> queue;
     std::thread *queueConsumerThread;
 };
 
@@ -81,7 +115,8 @@ class PmemContext {
     folly::Future<PmemStatus> shutdown();
 
     // behavioral functions
-    folly::Future<int> dispatch();
+    //    template<typename T>
+    // folly::Future<T> dispatch(PmemKey key, std::function<T(pool<PoolRoot> pool, folly::Promise<T> promise)> fn) noexcept;
 
     // folly::Future<int> move_range(low_key, high_key);
 

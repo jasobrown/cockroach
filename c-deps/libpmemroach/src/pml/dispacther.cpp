@@ -29,6 +29,7 @@ namespace pml {
 
 // TODO(jeb): (might) need a mapping of NUMA node to local CPUs
 
+
 struct PmemPoolConfig {
     const char *path;
     size_t size;
@@ -115,9 +116,13 @@ void setAffinity(int cpuIndex) {
 /// A simple 'consume' function until I've fleshed out the downstream
 /// consumer functionality/behaviors.
 static
-void consume(std::shared_ptr<folly::MPMCQueue<DispatchEvent>> queue,
+void consume(std::shared_ptr<folly::MPMCQueue<int>> queue,
              std::shared_ptr<pool<PoolRoot>> pool) {
-
+    while (true) {
+        // int event;
+        // queue->blockingRead(&event);
+        // PmemStatus status = fn(ent.promise);
+    }
 }
 
 std::shared_ptr<PmemContext>
@@ -133,7 +138,7 @@ PmemContext::createAndInit() {
     // are actually going to use). for now, i'm just faking it ...
     int cpus = cpuCount();
     for (int i = 0; i < cpus; ++i) {
-        auto queue = std::make_shared<folly::MPMCQueue<DispatchEvent>>(folly::MPMCQueue<int>(128));
+        auto queue = std::make_shared<folly::MPMCQueue<int>>(folly::MPMCQueue<int>(128));
         int poolIndex = i / pools.size();
         auto pool = pools[poolIndex];
         std::thread* consumer = new std::thread([i, queue, pool] {
@@ -151,10 +156,22 @@ PmemContext::createAndInit() {
     
 
     
-
-
-    
     return nullptr;
 }
+/*
+template<typename T>
+folly::Future<T> PmemContext::dispatch(PmemKey key, std::function<T(pool<PoolRoot> pool, folly::Promise<T> promise)> fn) noexcept {
+    // find correct pool/range entry
+    // ... which then maps to a queue (maybe QueueContext).
+
+    // TODO(jeb) stop faking the funk
+    pool<PoolRoot> pool = nullptr;
+    QueueContext cxt = queueContexts[0];
+
+    auto promiseFuture = folly::makePromiseContract<T>();
+    cxt.queue.blockingWrite(pool, std::move(std::get<0>(promiseFuture)));
+    return std::get<1>(promiseFuture);
+}
+*/
 
 } // namespace pml
