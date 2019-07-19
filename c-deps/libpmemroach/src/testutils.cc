@@ -18,17 +18,16 @@
 #include <google/protobuf/stubs/stringprintf.h>
 #include <gtest/gtest.h>
 #include <regex>
-#include <rocksdb/status.h>
 #include <stdlib.h>
 #include <string>
 #include "fmt.h"
 
-extern "C" {
-// Tests are run in plain C++, we need a symbol for rocksPmemLog, normally
-// implemented on the Go side.
-bool __attribute__((weak)) rocksPmemV(int, int) { return false; }
-void __attribute__((weak)) rocksPmemLog(int, char*, int) {}
-}  // extern "C"
+// extern "C" {
+// // Tests are run in plain C++, we need a symbol for rocksPmemLog, normally
+// // implemented on the Go side.
+// bool __attribute__((weak)) rocksPmemV(int, int) { return false; }
+// void __attribute__((weak)) rocksPmemLog(int, char*, int) {}
+// }  // extern "C"
 
 namespace testutils {
 
@@ -76,41 +75,41 @@ TempDirHandler::~TempDirHandler() {
 
 std::string TempDirHandler::Path(const std::string& subpath) { return tmp_dir_ + "/" + subpath; }
 
-rocksdb::Status compareErrorMessage(rocksdb::Status status, const char* err_msg, bool partial) {
-  if (strcmp("", err_msg) == 0) {
-    // Expected success.
-    if (status.ok()) {
-      return rocksdb::Status::OK();
-    }
-    return rocksdb::Status::InvalidArgument(
-        fmt::StringPrintf("expected success, got error \"%s\"", status.getState()));
-  }
+// rocksdb::Status compareErrorMessage(rocksdb::Status status, const char* err_msg, bool partial) {
+//   if (strcmp("", err_msg) == 0) {
+//     // Expected success.
+//     if (status.ok()) {
+//       return rocksdb::Status::OK();
+//     }
+//     return rocksdb::Status::InvalidArgument(
+//         fmt::StringPrintf("expected success, got error \"%s\"", status.getState()));
+//   }
 
-  // Expected failure.
-  if (status.ok()) {
-    return rocksdb::Status::InvalidArgument(
-        fmt::StringPrintf("expected error \"%s\", got success", err_msg));
-  }
-  std::regex re(err_msg);
-  if (partial) {
-    // Partial regexp match.
-    std::cmatch cm;
-    if (std::regex_search(status.getState(), cm, re)) {
-      return rocksdb::Status::OK();
-    }
-  } else {
-    // Full regexp match.
-    if (std::regex_match(status.getState(), re)) {
-      return rocksdb::Status::OK();
-    }
-  }
+//   // Expected failure.
+//   if (status.ok()) {
+//     return rocksdb::Status::InvalidArgument(
+//         fmt::StringPrintf("expected error \"%s\", got success", err_msg));
+//   }
+//   std::regex re(err_msg);
+//   if (partial) {
+//     // Partial regexp match.
+//     std::cmatch cm;
+//     if (std::regex_search(status.getState(), cm, re)) {
+//       return rocksdb::Status::OK();
+//     }
+//   } else {
+//     // Full regexp match.
+//     if (std::regex_match(status.getState(), re)) {
+//       return rocksdb::Status::OK();
+//     }
+//   }
 
-  return rocksdb::Status::InvalidArgument(
-      fmt::StringPrintf("expected error \"%s\", got \"%s\"", err_msg, status.getState()));
-}
+//   return rocksdb::Status::InvalidArgument(
+//       fmt::StringPrintf("expected error \"%s\", got \"%s\"", err_msg, status.getState()));
+// }
 
-rocksdb::Status compareErrorMessage(rocksdb::Status status, std::string err_msg, bool partial) {
-  return compareErrorMessage(status, err_msg.c_str(), partial);
-}
+// rocksdb::Status compareErrorMessage(rocksdb::Status status, std::string err_msg, bool partial) {
+//   return compareErrorMessage(status, err_msg.c_str(), partial);
+// }
 
 }  // namespace testutils

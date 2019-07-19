@@ -15,43 +15,41 @@
 #pragma once
 
 #include <gtest/gtest.h>
-#include <rocksdb/env.h>
-#include <rocksdb/status.h>
 #include <string>
-#include "include/libpmemroach.h"
+#include "libpmemroach.h"
 
 namespace testutils {
 
 // Returns initialized PmemOptions with reasonable values for unittests.
-inline PmemOptions defaultPmemOptions() {
-  return PmemOptions{
-      nullptr,    // cache
-      2,          // num_cpu
-      1024,       // max_open_files
-      false,      // use_file_registry
-      false,      // must_exist
-      false,      // read_only
-      PmemSlice(),  // rocksdb_options
-      PmemSlice(),  // extra_options
-  };
-}
+// inline PmemOptions defaultPmemOptions() {
+//   return PmemOptions{
+//       nullptr,    // cache
+//       2,          // num_cpu
+//       1024,       // max_open_files
+//       false,      // use_file_registry
+//       false,      // must_exist
+//       false,      // read_only
+//       PmemSlice(),  // rocksdb_options
+//       PmemSlice(),  // extra_options
+//   };
+// }
 
 // FakeTimeEnv is a simple wrapper around a rocksdb::Env that returns a fixed time
 // set through SetCurrentTime.
-class FakeTimeEnv : public rocksdb::EnvWrapper {
- public:
-  explicit FakeTimeEnv(rocksdb::Env* base_env) : rocksdb::EnvWrapper(base_env), fake_time_(0){};
-  virtual rocksdb::Status GetCurrentTime(int64_t* unix_time) override {
-    *unix_time = fake_time_;
-    return rocksdb::Status::OK();
-  }
+// class FakeTimeEnv : public rocksdb::EnvWrapper {
+//  public:
+//   explicit FakeTimeEnv(rocksdb::Env* base_env) : rocksdb::EnvWrapper(base_env), fake_time_(0){};
+//   virtual rocksdb::Status GetCurrentTime(int64_t* unix_time) override {
+//     *unix_time = fake_time_;
+//     return rocksdb::Status::OK();
+//   }
 
-  void SetCurrentTime(int64_t t) { fake_time_ = t; };
-  void IncCurrentTime(int64_t t) { fake_time_ += t; };
+//   void SetCurrentTime(int64_t t) { fake_time_ = t; };
+//   void IncCurrentTime(int64_t t) { fake_time_ += t; };
 
- private:
-  int64_t fake_time_;
-};
+//  private:
+//   int64_t fake_time_;
+// };
 
 // TempDirHandler will create a temporary directory at initialization time
 // and destroy it and all its contents at destruction time.
@@ -73,8 +71,8 @@ class TempDirHandler {
   std::string tmp_dir_;
 };
 
-rocksdb::Status compareErrorMessage(rocksdb::Status status, const char* err_msg, bool partial);
-rocksdb::Status compareErrorMessage(rocksdb::Status status, std::string err_msg, bool partial);
+// rocksdb::Status compareErrorMessage(rocksdb::Status status, const char* err_msg, bool partial);
+// rocksdb::Status compareErrorMessage(rocksdb::Status status, std::string err_msg, bool partial);
 
 }  // namespace testutils
 

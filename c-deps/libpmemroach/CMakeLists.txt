@@ -81,6 +81,7 @@ enable_testing()
 
 # List of tests to build and run.
 set(tests
+  src/naive_test.cc
   # src/db_test.cc
   # src/encoding_test.cc
   # src/merge_test.cc
@@ -127,6 +128,11 @@ foreach(tsrc ${tests})
     gtest_main
     pthread
     ${PROTOBUF_LIB}
+    boost_context
+    boost_filesystem
+    boost_program_options
+    boost_system
+    boost_thread
   )
 
   if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -134,10 +140,10 @@ foreach(tsrc ${tests})
   endif()
 
   set_target_properties(${tname} PROPERTIES
-    CXX_STANDARD 11
+    CXX_STANDARD 14
     CXX_STANDARD_REQUIRED YES
     CXX_EXTENSIONS NO
-    COMPILE_OPTIONS "-Werror;-Wall;-Wno-sign-compare"
+    #COMPILE_OPTIONS "-Werror;-Wall;-Wno-sign-compare"
   )
 
   # Add the executable to the set of tests run by the "check" target.
