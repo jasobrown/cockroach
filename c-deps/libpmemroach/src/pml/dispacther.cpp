@@ -19,6 +19,7 @@
 #include <hwloc.h>
 #include <folly/portability/Config.h>
 
+#include "pml/pool.hpp"
 #include "pml/pml.hpp"
 
 using namespace pmem::obj;
@@ -116,12 +117,12 @@ void setAffinity(int cpuIndex) {
 /// A simple 'consume' function until I've fleshed out the downstream
 /// consumer functionality/behaviors.
 static
-void consume(std::shared_ptr<folly::MPMCQueue<int>> queue,
+void consume(std::shared_ptr<folly::MPMCQueue<Task>> queue,
              std::shared_ptr<pool<PoolRoot>> pool) {
     while (true) {
-        // int event;
-        // queue->blockingRead(&event);
-        // PmemStatus status = fn(ent.promise);
+        Task task;
+        queue->blockingRead(task);
+        task.exec();
     }
 }
 
@@ -138,7 +139,7 @@ PmemContext::createAndInit() {
     // are actually going to use). for now, i'm just faking it ...
     int cpus = cpuCount();
     for (int i = 0; i < cpus; ++i) {
-        auto queue = std::make_shared<folly::MPMCQueue<int>>(folly::MPMCQueue<int>(128));
+        auto queue = std::make_shared<folly::MPMCQueue<Task>>(folly::MPMCQueue<Task>(128));
         int poolIndex = i / pools.size();
         auto pool = pools[poolIndex];
         std::thread* consumer = new std::thread([i, queue, pool] {
@@ -148,7 +149,8 @@ PmemContext::createAndInit() {
             consume(queue, pool);
         });  
 
-        queueContexts.push_back(QueueContext{queue, consumer});
+        // TODO(jeb) FIX THIS ASAP
+        //queueContexts.push_back(QueueContext{queue, consumer});
     }
 
     // set up ranges (possibly pre-partition ranges, not sure how to
@@ -158,20 +160,24 @@ PmemContext::createAndInit() {
     
     return nullptr;
 }
-/*
-template<typename T>
-folly::Future<T> PmemContext::dispatch(PmemKey key, std::function<T(pool<PoolRoot> pool, folly::Promise<T> promise)> fn) noexcept {
+
+void PmemContext::dispatch(Task &&t) noexcept {
     // find correct pool/range entry
     // ... which then maps to a queue (maybe QueueContext).
 
     // TODO(jeb) stop faking the funk
-    pool<PoolRoot> pool = nullptr;
-    QueueContext cxt = queueContexts[0];
+    auto pool = pools[0];
+    auto cxt = queueContexts[0];
 
-    auto promiseFuture = folly::makePromiseContract<T>();
-    cxt.queue.blockingWrite(pool, std::move(std::get<0>(promiseFuture)));
-    return std::get<1>(promiseFuture);
+    cxt.queue->blockingWrite(t);
 }
-*/
+
+
+
+
+
+
+
+
 
 } // namespace pml

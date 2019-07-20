@@ -22,62 +22,47 @@
 #include <folly/futures/Future-inl.h>
 #include <folly/futures/Promise.h>
 
-#include <libpmemobj++/p.hpp>
-#include <libpmemobj++/persistent_ptr.hpp>
-#include <libpmemobj++/pool.hpp>
-
 #include "libpmemroach.h"
-#include "libpmemobj++/experimental/concurrent_hash_map.hpp"
+#include "pml/pool.hpp"
+#include "pml/task.hpp"
 
 using namespace pmem::obj;
 
 namespace pml {
 
-/// Modeled after the pool root structure as implemented
-/// the java llpl library. (Note: this format isn't documented
-/// in the llpl, but here we are.) The format contains two
-/// unsigned 64-bit values: one that points to the user's
-/// definded root object, and one that declares the intended
-/// size of the heap. 
-class PoolRoot {
-  public:
-    // TODO(jeb): decide what to do with ctor/copy ctor/move, etc...
-    
-    size_t GetUserRootOffset();
-    void SetUserRootOffset(size_t size);
-
-    /// Retrieve the size of the heap as declared when the heap
-    /// was initially created.
-    size_t GetHeapSize();
-
-    //    persistent_ptr<PoolUserRoot> GetUserRoot();
-
-    //  private:
-    p<uint64_t> userRootOffset;
-    p<uint64_t> heapSize;
-    //    persistent_ptr<PoolUserRoot> userRoot;
+struct QueueContext {
+    std::shared_ptr<folly::MPMCQueue<Task>> queue;
+    std::thread *queueConsumerThread;
 };
 
+class PmemContext {
+  public:
+    static
+    std::shared_ptr<PmemContext> createAndInit();
+    // TODO(jeb): add ctor/dtor/overrides for copy-ctor, and so on
+
+    //management functions
+    folly::Future<PmemStatus> shutdown();
+
+    // behavioral functions
+    void dispatch(Task &&t) noexcept;
+
+    // folly::Future<int> move_range(low_key, high_key);
+    // folly::Future<int> range_size(low_key);
+    // folly::Future<PmemStatus> clean_range();
+
+  private:
+    std::vector<QueueContext> queueContexts;
+    std::vector<std::shared_ptr<pool<PoolRoot>>> pools;
+};
+} // namespace pml
+
+
     /*
-      I want:
-      - a Promise
-          - if i pass in Promise to fn, I need to templatize the return
-      type
-          - if i don't pass in, still need to templatize the response,
-      but then i set it into the promise
-      - a PmemStatus as return
-
-      // java
-      String in = "in";
-      Callable<String> c = new Callable { String call(return
-      in.reverse()); }
-      Future<String> f = executor.submit(c);
-      f.wait();
-
-      // c++
-      PmemGet(DBKey, DBString *) { // DBString is an out value;
-        PmemResult res = dispatch.dispatch(key, [&] ()doPmemRead);
-        DBString == res.data;
+      PmemGet(PmemKey, DBString *) { // DBString is an out value;
+        // need reference to disptacher
+        Future<T> f  = dispatch.dispatch(key, [key] ()doPmemRead);
+        DBString == transform(f.get());
       }
 
       template<typename T>
@@ -96,35 +81,3 @@ class PoolRoot {
         p.set_value(key.reverse());
       }
      */
-
-    
-
-
-struct QueueContext {
-    std::shared_ptr<folly::MPMCQueue<int>> queue;
-    std::thread *queueConsumerThread;
-};
-
-class PmemContext {
-  public:
-    static
-    std::shared_ptr<PmemContext> createAndInit();
-    // TODO(jeb): add ctor/dtor/overrides for copy-ctor, and so on
-
-    //management functions
-    folly::Future<PmemStatus> shutdown();
-
-    // behavioral functions
-    //    template<typename T>
-    // folly::Future<T> dispatch(PmemKey key, std::function<T(pool<PoolRoot> pool, folly::Promise<T> promise)> fn) noexcept;
-
-    // folly::Future<int> move_range(low_key, high_key);
-
-    // folly::Future<int> range_size(low_key);
-
-    // folly::Future<PmemStatus> clean_range();
-
-  private:
-    std::vector<QueueContext> queueContexts;
-};
-} // namespace pml

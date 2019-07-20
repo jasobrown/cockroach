@@ -16,6 +16,7 @@ cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
 project(pmemroachlib)
 
 add_library(pmemroach
+  src/pml/task.cpp
   src/pml/dispacther.cpp
   # src/db.cc
   # src/encoding.cc
@@ -81,7 +82,7 @@ enable_testing()
 
 # List of tests to build and run.
 set(tests
-  src/naive_test.cc
+#  src/naive_test.cc
   # src/db_test.cc
   # src/encoding_test.cc
   # src/merge_test.cc
