@@ -25,10 +25,38 @@
 #include "libpmemroach.h"
 #include "pml/pool.hpp"
 #include "pml/task.hpp"
+#include "pml/art.hpp"
 
 using namespace pmem::obj;
 
 namespace pml {
+
+
+struct TreeRoot {
+
+};
+
+struct TreeManager {
+    std::unique_ptr<TreeRoot> root;
+
+    // TODO(jeb) maybe have some tree-level stats (which probably need
+    // to be persisted), like size in bytes.
+    // also, might need some field to indicate notion of the range(s)
+    // this tree is responsible for
+};
+
+
+      
+/// references to the actual ART trees and target data. There
+/// should be one TreeContext per CPU., and a TreeContext may
+/// serve many ranges.
+struct TreeContext {
+    // might need some field to indicate notion of the range(s)
+    // this tree is responsible for
+
+    
+    
+};
 
 struct QueueContext {
     std::shared_ptr<folly::MPMCQueue<Task>> queue;
@@ -52,7 +80,10 @@ class PmemContext {
     // folly::Future<PmemStatus> clean_range();
 
   private:
+    /// references to the data queues and the threads that consume
+    /// from them.
     std::vector<QueueContext> queueContexts;
+
     std::vector<std::shared_ptr<pool<PoolRoot>>> pools;
 };
 } // namespace pml

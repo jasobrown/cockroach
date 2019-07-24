@@ -41,8 +41,7 @@ struct PmemPoolConfig {
 /// each NUMA node will only have one pool mapped to it. Further, we
 /// assume each NUMA node on the machine has a pmem pool (otherwise, we
 /// will have unused CPUs.
-static std::vector<PmemPoolConfig>
-getPoolConfigs() {
+std::vector<PmemPoolConfig> getPoolConfigs() {
     // TODO(jeb): hard code pool information here
     std::vector<PmemPoolConfig> configs;
     configs.push_back(PmemPoolConfig{"/mnt/mem/pool0", PMEMOBJ_MIN_POOL, 0});
@@ -51,16 +50,14 @@ getPoolConfigs() {
     return configs;
 }
 
-static pool<PoolRoot>
-openPool(PmemPoolConfig &config) {
+pool<PoolRoot> openPool(PmemPoolConfig &config) {
     auto pop = pool<PoolRoot>::open(config.path, LAYOUT_NAME);
     // read existing root object
     // assert that stored size == size argument
     return pop;
 }
 
-static pool<PoolRoot>
-createPool(PmemPoolConfig &config) {
+pool<PoolRoot> createPool(PmemPoolConfig &config) {
     auto pop = pool<PoolRoot>::create(config.path, LAYOUT_NAME, config.size);
     auto root = pop.root();
 
@@ -75,8 +72,7 @@ createPool(PmemPoolConfig &config) {
     return pop;
 }
 
-static std::shared_ptr<pool<PoolRoot>>
-loadPool(PmemPoolConfig &config) {
+std::shared_ptr<pool<PoolRoot>> loadPool(PmemPoolConfig &config) {
     // do a check to see if file exists, instead of blindly creating
     std::ifstream poolCheck(config.path);
     pmem::obj::pool<PoolRoot> pool;
@@ -93,7 +89,6 @@ loadPool(PmemPoolConfig &config) {
                                                     { pool->close(); delete pool; });
 }
 
-static
 int cpuCount() {
     hwloc_topology_t topology;
     hwloc_topology_init(&topology);
@@ -103,7 +98,6 @@ int cpuCount() {
     return cpuCount;
 }
 
-static
 void setAffinity(int cpuIndex) {
     cpu_set_t cs;
     CPU_ZERO(&cs);
@@ -116,7 +110,6 @@ void setAffinity(int cpuIndex) {
 
 /// A simple 'consume' function until I've fleshed out the downstream
 /// consumer functionality/behaviors.
-static
 void consume(std::shared_ptr<folly::MPMCQueue<Task>> queue,
              std::shared_ptr<pool<PoolRoot>> pool) {
     while (true) {
@@ -124,6 +117,13 @@ void consume(std::shared_ptr<folly::MPMCQueue<Task>> queue,
         queue->blockingRead(task);
         task.exec();
     }
+}
+
+
+std::vector<std::shared_ptr<TreeManager>> initTrees(pool<PoolRoot> pool) {
+    std::vector<std::shared_ptr<TreeManager>> trees;
+
+    return trees;
 }
 
 std::shared_ptr<PmemContext>
@@ -138,19 +138,21 @@ PmemContext::createAndInit() {
     // TODO(jeb): need to know number of cpus (that are local to numa nodes we
     // are actually going to use). for now, i'm just faking it ...
     int cpus = cpuCount();
-    for (int i = 0; i < cpus; ++i) {
-        auto queue = std::make_shared<folly::MPMCQueue<Task>>(folly::MPMCQueue<Task>(128));
-        int poolIndex = i / pools.size();
-        auto pool = pools[poolIndex];
-        std::thread* consumer = new std::thread([i, queue, pool] {
-            //  pthread_setname_np(pthread_self(),
-            //            thread_name.c_str());
-            setAffinity(i);
-            consume(queue, pool);
-        });  
+    int cpusPerPool = cpus / pools.size();
+    for (int i = 0; i < pools.size(); ++i) {
+        auto pool = pools[i];
+        int baseCpuOffset = i * cpusPerPool;
+        for (int j = 0; j < cpusPerPool; ++j) {
+            int cpuId = baseCpuOffset + j;
+            auto queue = std::make_shared<folly::MPMCQueue<Task>>(folly::MPMCQueue<Task>(128));
+            std::thread* consumer = new std::thread([cpuId, queue, pool] {
+                setAffinity(cpuId);
+                consume(queue, pool);
+            });
 
-        // TODO(jeb) FIX THIS ASAP
-        //queueContexts.push_back(QueueContext{queue, consumer});
+            // TODO(jeb) FIX THIS ASAP
+            queueContexts.push_back(QueueContext{queue, consumer});
+        }
     }
 
     // set up ranges (possibly pre-partition ranges, not sure how to

@@ -14,10 +14,10 @@
 
 #include "engine.h"
 #include "db.h"
-#include "encoding.h"
+//#include "encoding.h"
 #include "fmt.h"
 #include "iterator.h"
-#include "protos/storage/engine/enginepb/rocksdb.pb.h"
+//#include "protos/storage/engine/enginepb/rocksdb.pb.h"
 #include "status.h"
 
 using namespace cockroach;
@@ -48,6 +48,8 @@ PmemStatus PmemImpl::Merge(PmemKey key, PmemSlice value) {
 }
 
 PmemStatus PmemImpl::Get(PmemKey key, PmemString* value) {
+    
+
     return kSuccess;
 }
 

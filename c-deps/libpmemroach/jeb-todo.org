@@ -49,7 +49,7 @@
    - [X] PrevKey()
    - [X] Key() MVCCKey
    - [X] Value() 	- [ ]byte
-   - [X] ValueProto(msg protoutil.Message) error
+vv   - [X] ValueProto(msg protoutil.Message) error
    - [X] ComputeStats(start, end MVCCKey, nowNanos int64) (enginepb.MVCCStats, error)
    - [X] FindSplitKey(start, end, minSplitKey MVCCKey, targetSize int64) (MVCCKey, error)
    - [X] MVCCGet(key roachpb.Key, timestamp hlc.Timestamp, opts MVCCGetOptions,) (*roachpb.Value, *roachpb.Intent, error)
@@ -147,7 +147,7 @@
    - [ ] figure out how to handle mvcc data 
 ** TODO pmem use[2/3][66%]
    - [X] pool creation / setup (per NUMA-node)
-   - [ ] how-to allocate blocks and get pointer address - not sure how 'c++' this is (maybe just plain old c workds better)
+   - [ ] how-to allocate blocks and get pointer address - not sure how 'c++' this is (maybe just plain old c works better)
    - [X] figure out how best to handle pmem transactions
 ** TODO dispatcher [4/5][80%]
    - [ ] dispatch algo
@@ -170,4 +170,16 @@ schedule
 - September - libpmemroach & golang engine
 - Oct 1 perf testing (& bug fixing & finishing in a rush!)
 - Oct 27 CONF DATE
+
+
+
+things i've learned
+- emacs
+- gdb
+- google test (unit testing in c++)
+- folly
+- boost
+- cmake / make
+- golang
+- c++
 
