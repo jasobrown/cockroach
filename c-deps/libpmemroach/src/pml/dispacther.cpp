@@ -50,63 +50,6 @@ std::vector<PmemPoolConfig> getPoolConfigs() {
     return configs;
 }
 
-pool<PoolRoot> openPool(PmemPoolConfig &config) {
-    auto pop = pool<PoolRoot>::open(config.path, LAYOUT_NAME);
-    // read existing root object
-    // assert that stored size == size argument
-    return pop;
-}
-
-pool<PoolRoot> createPool(PmemPoolConfig &config) {
-    auto pop = pool<PoolRoot>::create(config.path, LAYOUT_NAME, config.size);
-    auto root = pop.root();
-
-    transaction::run(pop, [&] {
-        root->heapSize = PMEMOBJ_MIN_POOL;
-        pop.persist(root->heapSize);
-        root->userRootOffset = 0;
-        pop.persist(root->userRootOffset);
-
-        // TODO(jeb): set up the user root, once i know what that is ...
-    });
-    return pop;
-}
-
-std::shared_ptr<pool<PoolRoot>> loadPool(PmemPoolConfig &config) {
-    // do a check to see if file exists, instead of blindly creating
-    std::ifstream poolCheck(config.path);
-    pmem::obj::pool<PoolRoot> pool;
-    if (poolCheck) {
-        pool = openPool(config);
-    } else {
-        pool = createPool(config);
-    }
-    
-    // try using a custom Deleter on the shared_ptr to close the pool
-    // before releasing memory. Not sure if this is the wrong thing to
-    // do, but here we are ...
-    return std::shared_ptr<::pool<PoolRoot>>(&pool, [](::pool<PoolRoot> *pool)
-                                                    { pool->close(); delete pool; });
-}
-
-int cpuCount() {
-    hwloc_topology_t topology;
-    hwloc_topology_init(&topology);
-    hwloc_topology_load(topology);
-    int cpuCount = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_PU);
-    hwloc_topology_destroy(topology);
-    return cpuCount;
-}
-
-void setAffinity(int cpuIndex) {
-    cpu_set_t cs;
-    CPU_ZERO(&cs);
-    CPU_SET(cpuIndex, &cs);
-    auto r = pthread_setaffinity_np(pthread_self(), sizeof(cs), &cs);
-    if (r != 0) {
-        std::cout << "failed to assign thread affinity for cpuIndex " << cpuIndex << ", ret code = " << r << std::endl;
-    }
-}
 
 /// A simple 'consume' function until I've fleshed out the downstream
 /// consumer functionality/behaviors.
@@ -119,48 +62,105 @@ void consume(std::shared_ptr<folly::MPMCQueue<Task>> queue,
     }
 }
 
-
-std::vector<std::shared_ptr<TreeManager>> initTrees(pool<PoolRoot> pool) {
-    std::vector<std::shared_ptr<TreeManager>> trees;
-
-    return trees;
+void setAffinity(int cpuIndex) {
+    cpu_set_t cs;
+    CPU_ZERO(&cs);
+    CPU_SET(cpuIndex, &cs);
+    auto r = pthread_setaffinity_np(pthread_self(), sizeof(cs), &cs);
+    if (r != 0) {
+        std::cout << "failed to assign thread affinity for cpuIndex " << cpuIndex << ", ret code = " << r << std::endl;
+    }
 }
 
-std::shared_ptr<PmemContext>
-PmemContext::createAndInit() {
-    // setup pmem pools
-    std::vector<PmemPoolConfig> configs = getPoolConfigs();
-    std::vector<std::shared_ptr<pool<PoolRoot>>> pools;
-    std::for_each(configs.begin(), configs.end(), [&] (auto&& config) { pools.push_back(loadPool(config));  });
+QueueContext buildQueueContext(std::shared_ptr<pool<PoolRoot>> pool, int cpuId) {
+    auto queue = std::make_shared<folly::MPMCQueue<Task>>(folly::MPMCQueue<Task>(128));
+    std::thread *consumer = new std::thread([cpuId, queue, pool] {
+        setAffinity(cpuId);
+        consume(queue, pool);
+     });
 
-    // set up the queues and consumer threads
-    std::vector<QueueContext> queueContexts;
+    return QueueContext{queue, consumer};
+}
+
+PoolContext openPool(PmemPoolConfig &config, std::vector<int> cpuIds) {
+    auto pop = pool<PoolRoot>::open(config.path, LAYOUT_NAME);
+    // read existing root object
+    // assert that stored size == size argument
+    auto pool_ptr = std::make_shared<pool<PoolRoot>>(pop);
+
+    return PoolContext{pool_ptr, std::vector<TreeContext>()};
+}
+
+PoolContext createPool(PmemPoolConfig &config, std::vector<int> cpuIds) {
+    auto pop = std::make_shared<pool<PoolRoot>>(pool<PoolRoot>::create(config.path, LAYOUT_NAME, config.size));
+    auto root = pop->root();
+
+    PoolContext ctx;
+    transaction::run(*pop, [&ctx, root, pop, cpuIds] {
+        root->heapSize = PMEMOBJ_MIN_POOL;
+        pop->persist(root->heapSize);
+        root->userRootOffset = 0;
+        pop->persist(root->userRootOffset);
+
+        std::vector<TreeContext> trees;
+        
+        // next, setup the trees
+        for (const int cpuId : cpuIds) {
+            auto treeRoot = nullptr;
+            auto queueContext = buildQueueContext(pop, cpuId);
+            trees.emplace_back(TreeContext{treeRoot, queueContext});
+        }
+        
+        // TODO(jeb): set up the user root, with pointer to map that
+        // points to all the trees
+
+        ctx = PoolContext{pop, trees};
+    });
+
+    return ctx;
+}
+
+PoolContext loadPool(PmemPoolConfig &config, std::vector<int> cpuIds) {
+    // do a check to see if file exists, instead of blindly creating
+    std::ifstream poolCheck(config.path);
+    if (poolCheck) {
+        return openPool(config, cpuIds);
+    }
+
+    return createPool(config, cpuIds);
+}
+
+int cpuCount() {
+    hwloc_topology_t topology;
+    hwloc_topology_init(&topology);
+    hwloc_topology_load(topology);
+    int cpuCount = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_PU);
+    hwloc_topology_destroy(topology);
+    return cpuCount;
+}
+
+std::shared_ptr<PmemContext> PmemContext::createAndInit() {
+    // setup pmem pools
+    std::vector<PmemPoolConfig> configs = getPoolConfigs(); 
+    std::vector<std::shared_ptr<pool<PoolRoot>>> pools;
+
     // TODO(jeb): need to know number of cpus (that are local to numa nodes we
     // are actually going to use). for now, i'm just faking it ...
     int cpus = cpuCount();
     int cpusPerPool = cpus / pools.size();
-    for (int i = 0; i < pools.size(); ++i) {
-        auto pool = pools[i];
+
+    std::vector<PoolContext> poolCxts;
+    for (int i = 0; i < configs.size(); ++i) {
         int baseCpuOffset = i * cpusPerPool;
+        std::vector<int> cpuIds;
         for (int j = 0; j < cpusPerPool; ++j) {
-            int cpuId = baseCpuOffset + j;
-            auto queue = std::make_shared<folly::MPMCQueue<Task>>(folly::MPMCQueue<Task>(128));
-            std::thread* consumer = new std::thread([cpuId, queue, pool] {
-                setAffinity(cpuId);
-                consume(queue, pool);
-            });
-
-            // TODO(jeb) FIX THIS ASAP
-            queueContexts.push_back(QueueContext{queue, consumer});
+            cpuIds.emplace_back(baseCpuOffset + j);
         }
+
+        poolCxts.emplace_back(loadPool(configs[i], cpuIds));
     }
-
-    // set up ranges (possibly pre-partition ranges, not sure how to
-    // do that), and map those to queues
     
-
-    
-    return nullptr;
+    return std::make_shared<PmemContext>(PmemContext{poolCxts});;
 }
 
 void PmemContext::dispatch(Task &&t) noexcept {
@@ -168,16 +168,11 @@ void PmemContext::dispatch(Task &&t) noexcept {
     // ... which then maps to a queue (maybe QueueContext).
 
     // TODO(jeb) stop faking the funk
-    auto pool = pools[0];
-    auto cxt = queueContexts[0];
+    auto pool = pools_[0];
+    //    auto cxt = queueContexts[0];
 
-    cxt.queue->blockingWrite(t);
+    //    cxt.queue->blockingWrite(t);
 }
-
-
-
-
-
 
 
 

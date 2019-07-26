@@ -31,43 +31,56 @@ using namespace pmem::obj;
 
 namespace pml {
 
+// one per queue/consumer thread (a/k/a TPC).
+// doesn't reall care about ranges and so on, just
+// provides a single-threaded execution context.
+struct QueueContext {
+    std::shared_ptr<folly::MPMCQueue<Task>> queue;
+    std::thread *queueConsumerThread;
+};
+
 
 struct TreeRoot {
 
 };
 
-struct TreeManager {
-    std::unique_ptr<TreeRoot> root;
+struct TreeContext {
+    std::shared_ptr<TreeRoot> root;
 
+    // std::vector<Range> ranges;
+  
+    // mapping of ARTs -> folly::MPMCQueue (or QueueContext) for dispatch
+    QueueContext queueContext;
+    
     // TODO(jeb) maybe have some tree-level stats (which probably need
     // to be persisted), like size in bytes.
     // also, might need some field to indicate notion of the range(s)
     // this tree is responsible for
 };
 
-
-      
-/// references to the actual ART trees and target data. There
-/// should be one TreeContext per CPU., and a TreeContext may
-/// serve many ranges.
-struct TreeContext {
-    // might need some field to indicate notion of the range(s)
-    // this tree is responsible for
-
+class PoolContext {
+  public:
+    PoolContext() = default;
+    PoolContext(std::shared_ptr<pool<PoolRoot>> pool, std::vector<TreeContext> trees) : pool_(pool), trees_(trees) {}
     
-    
-};
+    // management functions on the pool are handled here
+    std::shared_ptr<pool<PoolRoot>> pool_;
 
-struct QueueContext {
-    std::shared_ptr<folly::MPMCQueue<Task>> queue;
-    std::thread *queueConsumerThread;
+    std::vector<TreeContext> trees_;
 };
 
 class PmemContext {
   public:
     static
     std::shared_ptr<PmemContext> createAndInit();
-    // TODO(jeb): add ctor/dtor/overrides for copy-ctor, and so on
+
+    PmemContext(std::vector<PoolContext> pools) : pools_(pools) {}
+
+    PmemContext(PmemContext &cxt) = default;
+    PmemContext(PmemContext &&cxt) noexcept = default;
+    PmemContext& operator=(PmemContext &cxt) = default;
+    PmemContext& operator=(PmemContext &&cxt) noexcept = default;
+    ~PmemContext() noexcept = default;
 
     //management functions
     folly::Future<PmemStatus> shutdown();
@@ -82,11 +95,22 @@ class PmemContext {
   private:
     /// references to the data queues and the threads that consume
     /// from them.
-    std::vector<QueueContext> queueContexts;
+    //    std::vector<QueueContext> queueContexts;
 
-    std::vector<std::shared_ptr<pool<PoolRoot>>> pools;
+    std::vector<PoolContext> pools_;
 };
 } // namespace pml
+
+
+
+
+
+
+
+
+
+
+
 
 
     /*
