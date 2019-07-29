@@ -18,6 +18,7 @@ project(pmemroachlib)
 add_library(pmemroach
   src/pml/task.cpp
   src/pml/dispacther.cpp
+  src/pml/art.cpp
   # src/db.cc
   # src/encoding.cc
   # src/engine.cc

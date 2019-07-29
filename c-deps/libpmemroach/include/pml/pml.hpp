@@ -40,12 +40,8 @@ struct QueueContext {
 };
 
 
-struct TreeRoot {
-
-};
-
 struct TreeContext {
-    std::shared_ptr<TreeRoot> root;
+    std::shared_ptr<art::ArtTree> root;
 
     // std::vector<Range> ranges;
   

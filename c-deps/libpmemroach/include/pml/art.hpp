@@ -14,6 +14,11 @@
 
 #pragma once
 
+#include "libpmemroach.h"
+#include "pml/pool.hpp"
+
+using namespace pmem::obj;
+
 // TODO(jeb) unclear if I need to declare the node types in the header
 
 /// An implementation of the Adaptive Radix Tree (ART) paper
@@ -47,3 +52,32 @@
 /// prefix:
 /// An optional section if the prefix for this node cannot fit in the
 /// header, meaning that the prefix is greater than one byte.
+
+
+namespace pml {
+
+namespace art {
+
+class ArtTree {
+  public:
+    ArtTree(std::shared_ptr<pool<PoolRoot>> pool) : pool_(pool) {}
+
+
+    static std::shared_ptr<ArtTree>
+    createTree(std::shared_ptr<pool<PoolRoot>> pool);
+
+    void search(PmemKey key);
+    void insert(PmemKey key /* value */);
+    //void delete(PmemKey key);
+    
+  protected:
+    std::shared_ptr<pool<PoolRoot>> pool_;
+};
+
+
+    
+} // namespace art
+
+} // namespace pml
+
+

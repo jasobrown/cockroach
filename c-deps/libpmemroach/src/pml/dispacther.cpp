@@ -106,7 +106,7 @@ PoolContext createPool(PmemPoolConfig &config, std::vector<int> cpuIds) {
         
         // next, setup the trees
         for (const int cpuId : cpuIds) {
-            auto treeRoot = nullptr;
+            auto treeRoot = art::ArtTree::createTree(pop);
             auto queueContext = buildQueueContext(pop, cpuId);
             trees.emplace_back(TreeContext{treeRoot, queueContext});
         }
@@ -130,6 +130,7 @@ PoolContext loadPool(PmemPoolConfig &config, std::vector<int> cpuIds) {
     return createPool(config, cpuIds);
 }
 
+/// returns the count of available CPUs on this machine.
 int cpuCount() {
     hwloc_topology_t topology;
     hwloc_topology_init(&topology);
@@ -160,7 +161,7 @@ std::shared_ptr<PmemContext> PmemContext::createAndInit() {
         poolCxts.emplace_back(loadPool(configs[i], cpuIds));
     }
     
-    return std::make_shared<PmemContext>(PmemContext{poolCxts});;
+    return std::make_shared<PmemContext>(PmemContext{poolCxts});
 }
 
 void PmemContext::dispatch(Task &&t) noexcept {
