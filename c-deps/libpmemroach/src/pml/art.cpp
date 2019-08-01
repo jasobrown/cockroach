@@ -18,11 +18,26 @@ namespace pml {
 
 namespace art {
 
+enum class Type { ROOT,
+                  NODE_4,
+                  NODE_16,
+                  NODE_48,
+                  NODE_256,
+                  LEAF
+};
 
+size_t size(Type t) {
+    switch(t) {
+        case Type::ROOT : return 8;
+        default: return 0;
+    }
+}
 
 
 std::shared_ptr<ArtTree>
 ArtTree::createTree(std::shared_ptr<pool<PoolRoot>> pool) {
+    
+
     return std::make_shared<ArtTree>(ArtTree{pool});
 }
 

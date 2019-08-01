@@ -58,6 +58,8 @@ namespace pml {
 
 namespace art {
 
+/// Wrapper for logic and serialization of the ART. Does not maintain
+/// stored data itself, but pointers to data.
 class ArtTree {
   public:
     ArtTree(std::shared_ptr<pool<PoolRoot>> pool) : pool_(pool) {}
