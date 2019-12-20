@@ -155,5 +155,6 @@ const (
 	PgCatalogStatActivityTableID
 	PgCatalogSecurityLabelTableID
 	PgCatalogSharedSecurityLabelTableID
-	MinVirtualID = PgCatalogSharedSecurityLabelTableID
+	PgCatalogJasoBrownID
+	MinVirtualID = PgCatalogJasoBrownID
 )

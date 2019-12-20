@@ -196,6 +196,7 @@ var pgCatalog = virtualSchema{
 		"pg_user_mapping",
 		"pg_user_mappings",
 		"pg_views",
+		"pg_jasobrown",
 	),
 	tableDefs: map[sqlbase.ID]virtualSchemaDef{
 		sqlbase.PgCatalogAmTableID:                  pgCatalogAmTable,
@@ -246,6 +247,7 @@ var pgCatalog = virtualSchema{
 		sqlbase.PgCatalogStatActivityTableID:        pgCatalogStatActivityTable,
 		sqlbase.PgCatalogSecurityLabelTableID:       pgCatalogSecurityLabelTable,
 		sqlbase.PgCatalogSharedSecurityLabelTableID: pgCatalogSharedSecurityLabelTable,
+		sqlbase.PgCatalogJasoBrownID:								 pgCatalogJasoBrownTable,
 	},
 	// Postgres's catalogs are ill-defined when there is no current
 	// database set. Simply reject any attempts to use them in that
@@ -2600,6 +2602,23 @@ var pgCatalogSharedSecurityLabelTable = virtualSchemaTable{
 https://www.postgresql.org/docs/9.5/catalog-pg-shseclabel.html`,
 	schema: `
 CREATE TABLE pg_catalog.pg_shseclabel (
+	objoid OID,
+	classoid OID,
+	provider TEXT,
+	label TEXT
+)
+`,
+	populate: func(ctx context.Context, p *planner, _ *DatabaseDescriptor, addRow func(...tree.Datum) error) error {
+		return nil
+	},
+}
+
+var pgCatalogJasoBrownTable = virtualSchemaTable{
+	comment: `jasobrown hacking table (empty - feature not supported)
+https://www.postgresql.org/docs/9.5/catalog-pg-jasobrown.html`,
+	schema: `
+CREATE TABLE pg_catalog.
+(
 	objoid OID,
 	classoid OID,
 	provider TEXT,

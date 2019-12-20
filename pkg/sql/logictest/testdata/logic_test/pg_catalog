@@ -39,6 +39,7 @@ pg_foreign_table
 pg_index
 pg_indexes
 pg_inherits
+pg_jasobrown
 pg_language
 pg_locks
 pg_matviews
@@ -113,6 +114,7 @@ pg_foreign_table
 pg_index
 pg_indexes
 pg_inherits
+pg_jasobrown
 pg_language
 pg_locks
 pg_matviews
@@ -1456,6 +1458,7 @@ objoid      classoid    objsubid  description
 4294967216  4294967230  0         indexes (incomplete)
 4294967215  4294967230  0         index creation statements
 4294967214  4294967230  0         table inheritance hierarchy (empty - feature does not exist)
+4294967188  4294967230  0         jasobrown hacking table (empty - feature not supported)
 4294967213  4294967230  0         available languages (empty - feature does not exist)
 4294967212  4294967230  0         locks held by active processes (empty - feature does not exist)
 4294967211  4294967230  0         available materialized views (empty - feature does not exist)
