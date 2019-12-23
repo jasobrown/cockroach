@@ -296,6 +296,7 @@ pg_catalog          pg_locks
 pg_catalog          pg_matviews
 pg_catalog          pg_namespace
 pg_catalog          pg_operator
+pg_catalog          pg_opfamily
 pg_catalog          pg_prepared_statements
 pg_catalog          pg_prepared_xacts
 pg_catalog          pg_proc
@@ -435,6 +436,7 @@ pg_locks
 pg_matviews
 pg_namespace
 pg_operator
+pg_opfamily
 pg_prepared_statements
 pg_prepared_xacts
 pg_proc
@@ -581,6 +583,7 @@ system         pg_catalog          pg_locks                           SYSTEM VIE
 system         pg_catalog          pg_matviews                        SYSTEM VIEW  NO                  1
 system         pg_catalog          pg_namespace                       SYSTEM VIEW  NO                  1
 system         pg_catalog          pg_operator                        SYSTEM VIEW  NO                  1
+system         pg_catalog          pg_opfamily                        SYSTEM VIEW  NO                  1
 system         pg_catalog          pg_prepared_statements             SYSTEM VIEW  NO                  1
 system         pg_catalog          pg_prepared_xacts                  SYSTEM VIEW  NO                  1
 system         pg_catalog          pg_proc                            SYSTEM VIEW  NO                  1
@@ -1427,6 +1430,7 @@ NULL     public   system         pg_catalog          pg_locks                   
 NULL     public   system         pg_catalog          pg_matviews                        SELECT          NULL          YES
 NULL     public   system         pg_catalog          pg_namespace                       SELECT          NULL          YES
 NULL     public   system         pg_catalog          pg_operator                        SELECT          NULL          YES
+NULL     public   system         pg_catalog          pg_opfamily                        SELECT          NULL          YES
 NULL     public   system         pg_catalog          pg_prepared_statements             SELECT          NULL          YES
 NULL     public   system         pg_catalog          pg_prepared_xacts                  SELECT          NULL          YES
 NULL     public   system         pg_catalog          pg_proc                            SELECT          NULL          YES
@@ -1731,6 +1735,7 @@ NULL     public   system         pg_catalog          pg_locks                   
 NULL     public   system         pg_catalog          pg_matviews                        SELECT          NULL          YES
 NULL     public   system         pg_catalog          pg_namespace                       SELECT          NULL          YES
 NULL     public   system         pg_catalog          pg_operator                        SELECT          NULL          YES
+NULL     public   system         pg_catalog          pg_opfamily                        SELECT          NULL          YES
 NULL     public   system         pg_catalog          pg_prepared_statements             SELECT          NULL          YES
 NULL     public   system         pg_catalog          pg_prepared_xacts                  SELECT          NULL          YES
 NULL     public   system         pg_catalog          pg_proc                            SELECT          NULL          YES
