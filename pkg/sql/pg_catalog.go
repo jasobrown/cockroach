@@ -227,6 +227,7 @@ var pgCatalog = virtualSchema{
 		sqlbase.PgCatalogMatViewsTableID:            pgCatalogMatViewsTable,
 		sqlbase.PgCatalogNamespaceTableID:           pgCatalogNamespaceTable,
 		sqlbase.PgCatalogOperatorTableID:            pgCatalogOperatorTable,
+		sqlbase.PgCatalogOpFamilyTableID:            pgCatalogOpFamilyTable,
 		sqlbase.PgCatalogPreparedStatementsTableID:  pgCatalogPreparedStatementsTable,
 		sqlbase.PgCatalogPreparedXactsTableID:       pgCatalogPreparedXactsTable,
 		sqlbase.PgCatalogProcTableID:                pgCatalogProcTable,
@@ -1678,6 +1679,7 @@ CREATE TABLE pg_catalog.pg_namespace (
 		h := makeOidHasher()
 		return forEachDatabaseDesc(ctx, p, dbContext, func(db *sqlbase.DatabaseDescriptor) error {
 			return forEachSchemaName(ctx, p, db, func(s string) error {
+			  log.Infof(ctx, "next database/schema: %s/%s", db.Name, s)
 				return addRow(
 					h.NamespaceOid(db, s), // oid
 					tree.NewDString(s),    // nspname
@@ -1812,6 +1814,30 @@ var (
 	_ = proArgModeOut
 	_ = proArgModeTable
 )
+
+var pgCatalogOpFamilyTable = virtualSchemaTable{
+	comment: `operator families (empty - unimplemented)
+https://www.postgresql.org/docs/10/catalog-pg-opfamily.html`,
+	schema: `
+CREATE TABLE pg_catalog.pg_opfamily (
+  oid OID,
+  opfmethod OID,
+  opfname NAME,
+  opfnamespace OID,
+  opfowner OID
+)`,
+	populate: func(ctx context.Context, p *planner, dbContext *DatabaseDescriptor, addRow func(...tree.Datum) error) error {
+    h := makeOidHasher()
+    name := "this_is_a_temp_name"
+    return addRow(
+      h.OpFamilyOid(cockroachIndexEncodingOid, name), // oid -- hash of the opfmethod, opfname columns (PG includes the opfnamespace column, as well)
+      cockroachIndexEncodingOid,                      // opfmethod -- pg_am.oid
+      tree.NewDName(name),                            // opfname -- ???
+      tree.DNull,                                     // opfnamepace -- assign to 'pg_catalog' (ala PG), or NULL
+      tree.DNull,                                     // opfowner --- assign to 'root' (ala PG), or NULL
+    )
+	},
+}
 
 var pgCatalogPreparedXactsTable = virtualSchemaTable{
 	comment: `prepared transactions (empty - feature does not exist)
@@ -2833,6 +2859,7 @@ const (
 	userTypeTag
 	collationTypeTag
 	operatorTypeTag
+	opfamilyTypeTag
 )
 
 func (h oidHasher) writeTypeTag(tag oidTypeTag) {
@@ -2983,6 +3010,13 @@ func (h oidHasher) OperatorOid(name string, leftType, rightType, returnType *tre
 	h.writeOID(rightType)
 	h.writeOID(returnType)
 	return h.getOid()
+}
+
+func (h oidHasher) OpFamilyOid(method *tree.DOid, name string) *tree.DOid {
+  h.writeTypeTag(opfamilyTypeTag)
+  h.writeOID(method)
+  h.writeStr(name)
+  return h.getOid()
 }
 
 func defaultOid(id sqlbase.ID) *tree.DOid {
