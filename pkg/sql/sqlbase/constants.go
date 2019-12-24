@@ -134,7 +134,8 @@ const (
 	PgCatalogLocksTableID
 	PgCatalogMatViewsTableID
 	PgCatalogNamespaceTableID
-	PgCatalogOperatorTableID
+  PgCatalogOpClassTableID
+  PgCatalogOperatorTableID
 	PgCatalogPreparedStatementsTableID
 	PgCatalogPreparedXactsTableID
 	PgCatalogProcTableID

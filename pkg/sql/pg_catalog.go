@@ -225,7 +225,8 @@ var pgCatalog = virtualSchema{
 		sqlbase.PgCatalogLocksTableID:               pgCatalogLocksTable,
 		sqlbase.PgCatalogMatViewsTableID:            pgCatalogMatViewsTable,
 		sqlbase.PgCatalogNamespaceTableID:           pgCatalogNamespaceTable,
-		sqlbase.PgCatalogOperatorTableID:            pgCatalogOperatorTable,
+    sqlbase.PgCatalogOpClassTableID:             pgCatalogOpClassTable,
+    sqlbase.PgCatalogOperatorTableID:            pgCatalogOperatorTable,
 		sqlbase.PgCatalogPreparedStatementsTableID:  pgCatalogPreparedStatementsTable,
 		sqlbase.PgCatalogPreparedXactsTableID:       pgCatalogPreparedXactsTable,
 		sqlbase.PgCatalogProcTableID:                pgCatalogProcTable,
@@ -1654,6 +1655,41 @@ var (
 	// Avoid unused warning for constants.
 	_ = postfixKind
 )
+
+var pgCatalogOpClassTable = virtualSchemaTable{
+  comment: `available namespaces (incomplete; namespaces and databases are congruent in CockroachDB)
+https://www.postgresql.org/docs/9.5/catalog-pg-namespace.html`,
+  schema: `
+CREATE TABLE pg_catalog.pg_opclass (
+	oid OID,
+  opcmethod OID,
+  opcname NAME,
+  opcnamespace OID,
+  opcowner OID,
+  opcfamily OID,
+  opcintype OID,
+  opcdefault bool,
+  opckeytype OID
+)`,
+  populate: func(ctx context.Context, p *planner, dbContext *DatabaseDescriptor, addRow func(...tree.Datum) error) error {
+    //h := makeOidHasher()
+    return forEachDatabaseDesc(ctx, p, dbContext, func(db *sqlbase.DatabaseDescriptor) error {
+      return forEachSchemaName(ctx, p, db, func(s string) error {
+        return addRow(
+          tree.DNull,            // oid
+          tree.DNull,            // opcmethod
+          tree.DNull,            // opcname
+          tree.DNull,            // opcnamespace
+          tree.DNull,            // opcowner
+          tree.DNull,            // opcfamily
+          tree.DNull,            // opcintype
+          tree.DNull,            // opcdefault
+          tree.DNull,            // opckeytype
+        )
+      })
+    })
+  },
+}
 
 var pgCatalogOperatorTable = virtualSchemaTable{
 	comment: `operators (incomplete)
