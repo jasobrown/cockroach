@@ -324,6 +324,18 @@ enum Family {
     //
     BitFamily = 21;
 
+    // IPRangeFamily is the family of types containing an ordered pair of either IPv4
+    // or IPv6 address.
+    //
+    //   Canonical: N/A
+    //   Oid      : <jasobrown hack time>
+    //   Width    : 2 * {IPv4|IPv6} address
+    //
+    // Examples:
+    //   IPRange
+    //
+    IPRangeFamily = 22;
+
     // AnyFamily is a special type family used during static analysis as a
     // wildcard type that matches any other type, including scalar, array, and
     // tuple types. Execution-time values should never have this type. As an

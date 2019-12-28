@@ -15,6 +15,11 @@ import (
 	"github.com/lib/pq/oid"
 )
 
+const (
+  T_iprange oid.Oid = 42424
+  T__iprange oid.Oid = 42425
+)
+
 // Convenience list of pre-constructed OID-related types.
 var (
 	// Oid is the type of a Postgres Object ID value.
@@ -79,16 +84,17 @@ var OidToType = map[oid.Oid]*T{
 	oid.T_regnamespace: RegNamespace,
 	oid.T_regproc:      RegProc,
 	oid.T_regprocedure: RegProcedure,
-	oid.T_regtype:      RegType,
-	oid.T_text:         String,
-	oid.T_time:         Time,
-	oid.T_timetz:       TimeTZ,
-	oid.T_timestamp:    Timestamp,
-	oid.T_timestamptz:  TimestampTZ,
-	oid.T_unknown:      Unknown,
-	oid.T_uuid:         Uuid,
-	oid.T_varbit:       VarBit,
-	oid.T_varchar:      VarChar,
+	oid.T_regtype:     RegType,
+	oid.T_text:        String,
+	oid.T_time:        Time,
+	oid.T_timetz:      TimeTZ,
+	oid.T_timestamp:   Timestamp,
+	oid.T_timestamptz: TimestampTZ,
+	oid.T_unknown:     Unknown,
+	oid.T_uuid:        Uuid,
+	oid.T_varbit:      VarBit,
+	oid.T_varchar:     VarChar,
+	T_iprange:         IPRange,
 }
 
 // oidToArrayOid maps scalar type Oids to their corresponding array type Oid.
@@ -127,6 +133,7 @@ var oidToArrayOid = map[oid.Oid]oid.Oid{
 	oid.T_uuid:         oid.T__uuid,
 	oid.T_varbit:       oid.T__varbit,
 	oid.T_varchar:      oid.T__varchar,
+	T_iprange:          T__iprange,
 }
 
 // familyToOid maps each type family to a default OID value that is used when

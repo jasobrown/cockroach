@@ -2447,6 +2447,9 @@ CREATE TABLE pg_catalog.pg_type (
 					typType = typTypePseudo
 				}
 				typname := typ.PGName()
+        log.Infof(ctx, "JEB::pg_type - next type: %+v, oid %d, typname = %+v, typType = %+v, typLen(typ) = %+v, " +
+          "typByVal(typ) = %+v, cat = %+v, builtinPrefix = %+v",
+          typ, o, typname, typType, typLen(typ), typByVal(typ), cat, builtinPrefix)
 
 				if err := addRow(
 					tree.NewDOid(tree.DInt(o)), // oid
@@ -2672,6 +2675,7 @@ var datumToTypeCategory = map[types.Family]*tree.DString{
 	types.UuidFamily:        typCategoryUserDefined,
 	types.INetFamily:        typCategoryNetworkAddr,
 	types.UnknownFamily:     typCategoryUnknown,
+	types.IPRangeFamily:     typCategoryUserDefined,
 }
 
 func typCategory(typ *types.T) tree.Datum {

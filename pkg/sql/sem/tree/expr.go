@@ -1510,6 +1510,7 @@ var (
 	inetCastTypes      = annotateCast(types.INet, []*types.T{types.Unknown, types.String, types.AnyCollatedString, types.INet})
 	arrayCastTypes     = annotateCast(types.AnyArray, []*types.T{types.Unknown, types.String})
 	jsonCastTypes      = annotateCast(types.Jsonb, []*types.T{types.Unknown, types.String, types.Jsonb})
+	iprangeCastTypes   = annotateCast(types.IPRange, []*types.T{types.Unknown, types.String, types.AnyCollatedString, types.IPRange})
 )
 
 // validCastTypes returns a set of types that can be cast into the provided type.
@@ -1545,6 +1546,8 @@ func validCastTypes(t *types.T) []castInfo {
 		return uuidCastTypes
 	case types.INetFamily:
 		return inetCastTypes
+  case types.IPRangeFamily:
+    return iprangeCastTypes
 	case types.OidFamily:
 		return oidCastTypes
 	case types.ArrayFamily:
@@ -1713,6 +1716,7 @@ func (node *DDecimal) String() string         { return AsString(node) }
 func (node *DFloat) String() string           { return AsString(node) }
 func (node *DInt) String() string             { return AsString(node) }
 func (node *DInterval) String() string        { return AsString(node) }
+func (node *DIPRange) String() string         { return AsString(node) }
 func (node *DJSON) String() string            { return AsString(node) }
 func (node *DUuid) String() string            { return AsString(node) }
 func (node *DIPAddr) String() string          { return AsString(node) }

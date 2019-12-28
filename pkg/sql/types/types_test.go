@@ -142,12 +142,18 @@ func TestTypes(t *testing.T) {
 			Family: FloatFamily, Width: 32, Oid: oid.T_float4, Locale: &emptyLocale}}},
 		{Float4, MakeScalar(FloatFamily, oid.T_float4, 0, 32, emptyLocale)},
 
-		// INET
-		{INet, &T{InternalType: InternalType{
-			Family: INetFamily, Oid: oid.T_inet, Locale: &emptyLocale}}},
-		{INet, MakeScalar(INetFamily, oid.T_inet, 0, 0, emptyLocale)},
+    // INET
+    {INet, &T{InternalType: InternalType{
+      Family: INetFamily, Oid: oid.T_inet, Locale: &emptyLocale}}},
+    {INet, MakeScalar(INetFamily, oid.T_inet, 0, 0, emptyLocale)},
 
-		// INT
+    // TODO(jeb) fix this
+    // IPRANGE
+    {IPRange, &T{InternalType: InternalType{
+      Family: IPRangeFamily, Oid: T_iprange, Locale: &emptyLocale}}},
+    //{INet, MakeScalar(INetFamily, oid.T_inet, 0, 0, emptyLocale)},
+
+    // INT
 		{Int, &T{InternalType: InternalType{
 			Family: IntFamily, Width: 64, Oid: oid.T_int8, Locale: &emptyLocale}}},
 		{Int4, &T{InternalType: InternalType{

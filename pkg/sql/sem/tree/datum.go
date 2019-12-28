@@ -13,7 +13,8 @@ package tree
 import (
 	"bytes"
 	"fmt"
-	"math"
+  "log"
+  "math"
 	"math/big"
 	"net"
 	"regexp"
@@ -1664,6 +1665,134 @@ func (d *DIPAddr) Format(ctx *FmtCtx) {
 // Size implements the Datum interface.
 func (d *DIPAddr) Size() uintptr {
 	return unsafe.Sizeof(*d)
+}
+
+// DIPRange is a datum for a range of IPAddrs.
+type DIPRange struct {
+  lower ipaddr.IPAddr
+  upper ipaddr.IPAddr
+}
+
+// NewDIPRange is a helper routine to create a *DIPRange initialized from its arguments.
+func NewDIPRange(d DIPRange) *DIPRange {
+  return &d
+}
+
+// AsDIPRange attempts to retrieve a *DIPRange from an Expr, returning a *DIPRange and
+// a flag signifying whether the assertion was successful. The function should
+// be used instead of direct type assertions wherever a *DIPRange wrapped by a
+// *DOidWrapper is possible.
+func AsDIPRange(e Expr) (DIPRange, bool) {
+  switch t := e.(type) {
+  case *DIPRange:
+    return *t, true
+  case *DOidWrapper:
+    return AsDIPRange(t.Wrapped)
+  }
+  return DIPRange{}, false
+}
+
+// MustBeDIPRange attempts to retrieve a DIPAddr from an Expr, panicking if the
+// assertion fails.
+func MustBeIPRange(e Expr) DIPRange {
+  i, ok := AsDIPRange(e)
+  if !ok {
+    panic(errors.AssertionFailedf("expected *DIPAddr, found %T", e))
+  }
+  return i
+}
+
+// ResolvedType implements the TypedExpr interface.
+func (*DIPRange) ResolvedType() *types.T {
+  return types.IPRange
+}
+
+// Compare implements the Datum interface.
+func (d *DIPRange) Compare(ctx *EvalContext, other Datum) int {
+  if other == DNull {
+    // NULL is less than any non-NULL value.
+    return 1
+  }
+  v, ok := UnwrapDatum(ctx, other).(*DIPRange)
+  if !ok {
+    panic(makeUnsupportedComparisonMessage(d, other))
+  }
+
+  lowerCmp := d.lower.Compare(&v.lower)
+  if lowerCmp != 0 {
+    return lowerCmp
+  }
+  return d.upper.Compare(&v.upper)
+}
+
+func (d DIPRange) equal(other *DIPRange) bool {
+  return d.lower.Equal(&other.lower) &&
+    d.upper.Equal(&other.upper)
+}
+
+func (d *DIPRange) Prev(_ *EvalContext) (Datum, bool) {
+  // TODO(jeb) impl me
+  return nil, false
+}
+
+func (d *DIPRange) Next(_ *EvalContext) (Datum, bool) {
+  // TODO(jeb) impl me
+  return nil, false
+}
+
+// IsMax implements the Datum interface.
+func (d *DIPRange) IsMax(_ *EvalContext) bool {
+  // TODO(jeb) not sure this is correct
+  return false // d.upper.Equal(dMaxIPAddr)
+}
+
+// IsMin implements the Datum interface.
+func (d *DIPRange) IsMin(_ *EvalContext) bool {
+  // TODO(jeb) not sure this is correct
+  return false //d.lower.Equal(dMinIPAddr)
+}
+
+// Min implements the Datum interface.
+func (*DIPRange) Min(_ *EvalContext) (Datum, bool) {
+  return dMinIPAddr, true
+}
+
+// Max implements the Datum interface.
+func (*DIPRange) Max(_ *EvalContext) (Datum, bool) {
+  return dMaxIPAddr, true
+}
+
+// AmbiguousFormat implements the Datum interface.
+func (*DIPRange) AmbiguousFormat() bool {
+  return true
+}
+
+// Format implements the NodeFormatter interface.
+func (d *DIPRange) Format(ctx *FmtCtx) {
+  f := ctx.flags
+  bareStrings := f.HasFlags(FmtFlags(lex.EncBareStrings))
+
+  if !bareStrings {
+    ctx.WriteByte('\'')
+  }
+  ctx.WriteString(d.lower.String())
+
+  if !bareStrings {
+    ctx.WriteString("\\-\\")
+  } else {
+    ctx.WriteByte('-')
+  }
+
+  ctx.WriteString(d.upper.String())
+  if !bareStrings {
+    ctx.WriteByte('\'')
+  }
+}
+
+// Size implements the Datum interface.
+func (d *DIPRange) Size() uintptr {
+  log.Printf("JEB::DIPRange.Size() = %i", unsafe.Sizeof(*d))
+  return unsafe.Sizeof(*d)
 }
 
 // DDate is the date Datum represented as the number of days after
@@ -3895,7 +4024,8 @@ var baseDatumTypeSizes = map[types.Family]struct {
 	types.JsonFamily:           {unsafe.Sizeof(DJSON{}), variableSize},
 	types.UuidFamily:           {unsafe.Sizeof(DUuid{}), fixedSize},
 	types.INetFamily:           {unsafe.Sizeof(DIPAddr{}), fixedSize},
-	types.OidFamily:            {unsafe.Sizeof(DInt(0)), fixedSize},
+  types.OidFamily:            {unsafe.Sizeof(DInt(0)), fixedSize},
+  types.IPRangeFamily:        {unsafe.Sizeof(DIPRange{}), fixedSize},
 
 	// TODO(jordan,justin): This seems suspicious.
 	types.ArrayFamily: {unsafe.Sizeof(DString("")), variableSize},

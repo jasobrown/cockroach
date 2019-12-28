@@ -1825,9 +1825,10 @@ var CmpOps = cmpOpFixups(map[ComparisonOperator]cmpOpOverload{
 		makeEqFn(types.Decimal, types.Decimal),
 		makeEqFn(types.AnyCollatedString, types.AnyCollatedString),
 		makeEqFn(types.Float, types.Float),
-		makeEqFn(types.INet, types.INet),
+    makeEqFn(types.INet, types.INet),
 		makeEqFn(types.Int, types.Int),
 		makeEqFn(types.Interval, types.Interval),
+    makeEqFn(types.IPRange, types.IPRange),
 		makeEqFn(types.Jsonb, types.Jsonb),
 		makeEqFn(types.Oid, types.Oid),
 		makeEqFn(types.String, types.String),
@@ -1872,9 +1873,10 @@ var CmpOps = cmpOpFixups(map[ComparisonOperator]cmpOpOverload{
 		makeLtFn(types.Decimal, types.Decimal),
 		makeLtFn(types.AnyCollatedString, types.AnyCollatedString),
 		makeLtFn(types.Float, types.Float),
-		makeLtFn(types.INet, types.INet),
+    makeLtFn(types.INet, types.INet),
 		makeLtFn(types.Int, types.Int),
 		makeLtFn(types.Interval, types.Interval),
+    makeLtFn(types.IPRange, types.IPRange),
 		makeLtFn(types.Oid, types.Oid),
 		makeLtFn(types.String, types.String),
 		makeLtFn(types.Time, types.Time),
@@ -1918,9 +1920,10 @@ var CmpOps = cmpOpFixups(map[ComparisonOperator]cmpOpOverload{
 		makeLeFn(types.Decimal, types.Decimal),
 		makeLeFn(types.AnyCollatedString, types.AnyCollatedString),
 		makeLeFn(types.Float, types.Float),
-		makeLeFn(types.INet, types.INet),
+    makeLeFn(types.INet, types.INet),
 		makeLeFn(types.Int, types.Int),
 		makeLeFn(types.Interval, types.Interval),
+    makeLeFn(types.IPRange, types.IPRange),
 		makeLeFn(types.Oid, types.Oid),
 		makeLeFn(types.String, types.String),
 		makeLeFn(types.Time, types.Time),
@@ -1972,9 +1975,10 @@ var CmpOps = cmpOpFixups(map[ComparisonOperator]cmpOpOverload{
 		makeIsFn(types.Decimal, types.Decimal),
 		makeIsFn(types.AnyCollatedString, types.AnyCollatedString),
 		makeIsFn(types.Float, types.Float),
-		makeIsFn(types.INet, types.INet),
+    makeIsFn(types.INet, types.INet),
 		makeIsFn(types.Int, types.Int),
 		makeIsFn(types.Interval, types.Interval),
+    makeIsFn(types.IPRange, types.IPRange),
 		makeIsFn(types.Jsonb, types.Jsonb),
 		makeIsFn(types.Oid, types.Oid),
 		makeIsFn(types.String, types.String),
@@ -2023,9 +2027,10 @@ var CmpOps = cmpOpFixups(map[ComparisonOperator]cmpOpOverload{
 		makeEvalTupleIn(types.AnyCollatedString),
 		makeEvalTupleIn(types.AnyTuple),
 		makeEvalTupleIn(types.Float),
-		makeEvalTupleIn(types.INet),
+    makeEvalTupleIn(types.INet),
 		makeEvalTupleIn(types.Int),
 		makeEvalTupleIn(types.Interval),
+    makeEvalTupleIn(types.IPRange),
 		makeEvalTupleIn(types.Jsonb),
 		makeEvalTupleIn(types.Oid),
 		makeEvalTupleIn(types.String),
@@ -3509,6 +3514,10 @@ func PerformCast(ctx *EvalContext, d Datum, t *types.T) (Datum, error) {
 			return d, nil
 		}
 
+  case types.IPRangeFamily:
+    // TODO(jeb) fill me in
+    return d, nil
+
 	case types.DateFamily:
 		switch d := d.(type) {
 		case *DString:
@@ -4372,7 +4381,12 @@ func (t *DOid) Eval(_ *EvalContext) (Datum, error) {
 
 // Eval implements the TypedExpr interface.
 func (t *DOidWrapper) Eval(_ *EvalContext) (Datum, error) {
-	return t, nil
+  return t, nil
+}
+
+// Eval implements the TypedExpr interface.
+func (t *DIPRange) Eval(_ *EvalContext) (Datum, error) {
+  return t, nil
 }
 
 // Eval implements the TypedExpr interface.

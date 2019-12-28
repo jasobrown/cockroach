@@ -11,15 +11,15 @@
 package types
 
 import (
-	"bytes"
-	"fmt"
-	"strings"
+  "bytes"
+  "fmt"
+  "strings"
 
-	"github.com/cockroachdb/cockroach/pkg/sql/lex"
-	"github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
-	"github.com/cockroachdb/cockroach/pkg/util/protoutil"
-	"github.com/cockroachdb/errors"
-	"github.com/lib/pq/oid"
+  "github.com/cockroachdb/cockroach/pkg/sql/lex"
+  "github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
+  "github.com/cockroachdb/cockroach/pkg/util/protoutil"
+  "github.com/cockroachdb/errors"
+  "github.com/lib/pq/oid"
 )
 
 // T is an instance of a SQL scalar, array, or tuple type. It describes the
@@ -78,6 +78,7 @@ import (
 // | OID               | OID            | T_oid         | 0         | 0     |
 // | UUID              | UUID           | T_uuid        | 0         | 0     |
 // | INET              | INET           | T_inet        | 0         | 0     |
+// | IPRANGE           | IPRANGE        | 42424         | 0         | 0     |
 // | TIME              | TIME           | T_time        | 0         | 0     |
 // | TIMETZ            | TIMETZ         | T_timetz      | 0         | 0     |
 // | JSON              | JSONB          | T_jsonb       | 0         | 0     |
@@ -324,6 +325,10 @@ var (
 	INet = &T{InternalType: InternalType{
 		Family: INetFamily, Oid: oid.T_inet, Locale: &emptyLocale}}
 
+	// IPRange contains an ordered pair of either IPv4 or IPv6 addresses.
+	IPRange = &T{InternalType: InternalType{
+	  Family: IPRangeFamily, Oid: T_iprange, Locale: &emptyLocale}}
+
 	// Scalar contains all types that meet this criteria:
 	//
 	//   1. Scalar type (no ArrayFamily or TupleFamily types).
@@ -348,6 +353,7 @@ var (
 		TimeTZ,
 		Jsonb,
 		VarBit,
+		IPRange,
 	}
 
 	// Any is a special type used only during static analysis as a wildcard type
@@ -994,6 +1000,8 @@ func (t *T) Name() string {
 		}
 	case INetFamily:
 		return "inet"
+  case IPRangeFamily:
+    return "iprange"
 	case IntFamily:
 		switch t.Width() {
 		case 64:
@@ -1063,10 +1071,19 @@ func (t *T) PGName() string {
 		return strings.ToLower(name)
 	}
 
+	// TODO(jeb) this is a straight-out hack, but not sure there's anything better
+	// as the pq.oid won't have our custom types
+  if t.Oid() == T_iprange {
+    return "iprange"
+  }
+  if t.Oid() == T__iprange {
+    return "_iprange"
+  }
+
 	// Postgres does not have an UNKNOWN[] type. However, CRDB does, so
 	// manufacture a name for it.
 	if t.Family() != ArrayFamily || t.ArrayContents().Family() != UnknownFamily {
-		panic(errors.AssertionFailedf("unknown PG name for oid %d", t.Oid()))
+		panic(errors.AssertionFailedf("unknown PG name for oid %d, family %d, name %s", t.Oid(), t.Family(), t.Name()))
 	}
 	return "_unknown"
 }
@@ -1149,6 +1166,8 @@ func (t *T) SQLStandardNameWithTypmod(haveTypmod bool, typmod int) string {
 		}
 	case INetFamily:
 		return "inet"
+  case IPRangeFamily:
+    return "iprange"
 	case IntFamily:
 		switch t.Width() {
 		case 16:

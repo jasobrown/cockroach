@@ -1367,6 +1367,10 @@ func (d *DIPAddr) TypeCheck(_ *SemaContext, _ *types.T) (TypedExpr, error) { ret
 
 // TypeCheck implements the Expr interface. It is implemented as an idempotent
 // identity function for Datum.
+func (d *DIPRange) TypeCheck(_ *SemaContext, _ *types.T) (TypedExpr, error) { return d, nil }
+
+// TypeCheck implements the Expr interface. It is implemented as an idempotent
+// identity function for Datum.
 func (d *DDate) TypeCheck(_ *SemaContext, _ *types.T) (TypedExpr, error) { return d, nil }
 
 // TypeCheck implements the Expr interface. It is implemented as an idempotent
