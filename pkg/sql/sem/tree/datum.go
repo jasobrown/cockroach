@@ -1694,7 +1694,7 @@ func AsDIPRange(e Expr) (DIPRange, bool) {
 
 // MustBeDIPRange attempts to retrieve a DIPAddr from an Expr, panicking if the
 // assertion fails.
-func MustBeIPRange(e Expr) DIPRange {
+func MustBeDIPRange(e Expr) DIPRange {
   i, ok := AsDIPRange(e)
   if !ok {
     panic(errors.AssertionFailedf("expected *DIPAddr, found %T", e))

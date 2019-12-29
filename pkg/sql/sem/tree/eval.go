@@ -1270,6 +1270,8 @@ var BinOps = map[BinaryOperator]binOpOverload{
 				return &DInterval{Duration: left.(*DInterval).Duration.DivFloat(r)}, nil
 			},
 		},
+		// TODO(jeb) add "iprange / int" - construct CIDR range from address a length n
+		// TODO(jeb) add "iprange / netmask" - construct CIDR range from address a netmask b
 	},
 
 	FloorDiv: {
@@ -1482,6 +1484,7 @@ var BinOps = map[BinaryOperator]binOpOverload{
 				return MakeDBool(DBool(ipAddr.ContainedBy(&other))), nil
 			},
 		},
+		//TODO(jeb): add iprange << iprange
 	},
 
 	RShift: {
@@ -1520,6 +1523,7 @@ var BinOps = map[BinaryOperator]binOpOverload{
 				return MakeDBool(DBool(ipAddr.Contains(&other))), nil
 			},
 		},
+    //TODO(jeb): add iprange >> iprange
 	},
 
 	Pow: {
@@ -3516,7 +3520,14 @@ func PerformCast(ctx *EvalContext, d Datum, t *types.T) (Datum, error) {
 
   case types.IPRangeFamily:
     // TODO(jeb) fill me in
-    return d, nil
+    switch t := d.(type) {
+    case *DString:
+      return ParseDIPRangeFromINetString(string(*t))
+    case *DCollatedString:
+      return ParseDIPRangeFromINetString(t.Contents)
+    case *DIPAddr:
+      return d, nil
+    }
 
 	case types.DateFamily:
 		switch d := d.(type) {
