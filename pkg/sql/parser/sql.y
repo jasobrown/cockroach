@@ -534,7 +534,10 @@ func newNameFromStr(s string) *tree.Name {
 %token <str> INET INET_CONTAINED_BY_OR_EQUALS
 %token <str> INET_CONTAINS_OR_EQUALS INDEX INDEXES INJECT INTERLEAVE INITIALLY
 %token <str> INNER INSERT INT INT2VECTOR INT2 INT4 INT8 INT64 INTEGER
-%token <str> INTERSECT INTERVAL INTO INVERTED IS ISERROR ISNULL ISOLATION
+%token <str> INTERSECT INTERVAL INTO INVERTED
+%token <str> IPRANGE
+// TODO(jeb) may need IPRANGE_CONTAINED_BY_OR_EQUALS and IPRANGE_CONTAINS_OR_EQUALS
+%token <str> IS ISERROR ISNULL ISOLATION
 
 %token <str> JOB JOBS JOIN JSON JSONB JSON_SOME_EXISTS JSON_ALL_EXISTS
 
@@ -7037,6 +7040,10 @@ const_typename:
   {
     $$.val = types.INet
   }
+| IPRANGE
+  {
+    $$.val = types.IPRange
+  }
 | OID
   {
     $$.val = types.Oid
@@ -9558,6 +9565,7 @@ unreserved_keyword:
 | INCREMENTAL
 | INDEXES
 | INET
+| IPRANGE
 | INJECT
 | INSERT
 | INT2

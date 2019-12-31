@@ -1274,6 +1274,7 @@ const (
 	BitArray     Type = 17
 	BitArrayDesc Type = 18 // BitArray encoded descendingly
 	TimeTZ       Type = 19
+	IPRange      Type = 20
 )
 
 // typMap maps an encoded type byte to a decoded Type. It's got 256 slots, one
@@ -2005,6 +2006,19 @@ func EncodeUntaggedIPAddrValue(appendTo []byte, u ipaddr.IPAddr) []byte {
 	return u.ToBuffer(appendTo)
 }
 
+// EncodeIPRangeValue encodes a ipaddr.IPRange value with its value tag, appends
+// it to the supplied buffer, and returns the final buffer.
+func EncodeIPRangeValue(appendTo []byte, colID uint32, u ipaddr.IPRange) []byte {
+	appendTo = EncodeValueTag(appendTo, colID, IPRange)
+	return EncodeUntaggedIPRangeValue(appendTo, u)
+}
+
+// EncodeUntaggedIPRangeValue encodes a ipaddr.IPRange value, appends it to the
+// supplied buffer, and returns the final buffer.
+func EncodeUntaggedIPRangeValue(appendTo []byte, u ipaddr.IPRange) []byte {
+	return u.ToBuffer(appendTo)
+}
+
 // EncodeJSONValue encodes an already-byte-encoded JSON value with no value tag
 // but with a length prefix, appends it to the supplied buffer, and returns the
 // final buffer.
@@ -2304,6 +2318,21 @@ func DecodeUntaggedIPAddrValue(b []byte) (remaining []byte, u ipaddr.IPAddr, err
 	return remaining, u, err
 }
 
+// DecodeIPRangeValue decodes a value encoded by EncodeIPRangeValue.
+func DecodeIPRangeValue(b []byte) (remaining []byte, u ipaddr.IPRange, err error) {
+	b, err = decodeValueTypeAssert(b, IPRange)
+	if err != nil {
+		return b, u, err
+	}
+	return DecodeUntaggedIPRangeValue(b)
+}
+
+// DecodeUntaggedIPRangeValue decodes a value encoded by EncodeUntaggedIPRangeValue.
+func DecodeUntaggedIPRangeValue(b []byte) (remaining []byte, u ipaddr.IPRange, err error) {
+	remaining, err = u.FromBuffer(b)
+	return remaining, u, err
+}
+
 func decodeValueTypeAssert(b []byte, expected Type) ([]byte, error) {
 	_, dataOffset, _, typ, err := DecodeValueTag(b)
 	if err != nil {
@@ -2399,6 +2428,14 @@ func PeekValueLengthWithOffsetsAndType(b []byte, dataOffset int, typ Type) (leng
 			return dataOffset + ipaddr.IPv6size, err
 		}
 		return 0, errors.Errorf("got invalid INET IP family: %d", family)
+	case IPRange:
+		family := ipaddr.IPFamily(b[0])
+		if family == ipaddr.IPv4family {
+			return dataOffset + (ipaddr.IPv4size * 2), err
+		} else if family == ipaddr.IPv6family {
+			return dataOffset + (ipaddr.IPv6size * 2), err
+		}
+		return 0, errors.Errorf("got invalid IPRange family: %d", family)
 	default:
 		return 0, errors.Errorf("unknown type %s", typ)
 	}
@@ -2509,6 +2546,13 @@ func PrettyPrintValueEncoded(b []byte) ([]byte, string, error) {
 			return b, "", err
 		}
 		return b, ipAddr.String(), nil
+	case IPRange:
+		var ipRange ipaddr.IPRange
+		b, ipRange, err = DecodeIPRangeValue(b)
+		if err != nil {
+			return b, "", err
+		}
+		return b, ipRange.String(), nil
 	default:
 		return b, "", errors.Errorf("unknown type %s", typ)
 	}

@@ -30,6 +30,7 @@ type DatumAlloc struct {
 	dintervalAlloc    []tree.DInterval
 	duuidAlloc        []tree.DUuid
 	dipnetAlloc       []tree.DIPAddr
+	diprangeAlloc     []tree.DIPRange
 	djsonAlloc        []tree.DJSON
 	dtupleAlloc       []tree.DTuple
 	doidAlloc         []tree.DOid
@@ -221,6 +222,18 @@ func (a *DatumAlloc) NewDIPAddr(v tree.DIPAddr) *tree.DIPAddr {
 	buf := &a.dipnetAlloc
 	if len(*buf) == 0 {
 		*buf = make([]tree.DIPAddr, datumAllocSize)
+	}
+	r := &(*buf)[0]
+	*r = v
+	*buf = (*buf)[1:]
+	return r
+}
+
+// NewDIPRange allocates a DIPRange.
+func (a *DatumAlloc) NewDIPRange(v tree.DIPRange) *tree.DIPRange {
+	buf := &a.diprangeAlloc
+	if len(*buf) == 0 {
+		*buf = make([]tree.DIPRange, datumAllocSize)
 	}
 	r := &(*buf)[0]
 	*r = v

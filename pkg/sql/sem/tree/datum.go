@@ -359,6 +359,17 @@ func ParseDIPAddrFromINetString(s string) (*DIPAddr, error) {
 	return &d, nil
 }
 
+// ParseDIPRange parses and returns the *DIPRange Datum value
+// represented by the provided input INet strings, or an error.
+func ParseDIPRange(s string) (*DIPRange, error) {
+	var d DIPRange
+	err := ipaddr.ParseIPRange(s, &d.IPRange)
+	if err != nil {
+		return nil, err
+	}
+	return &d, nil
+}
+
 // GetBool gets DBool or an error (also treats NULL as false, not an error).
 func GetBool(d Datum) (DBool, error) {
 	if v, ok := d.(*DBool); ok {
@@ -1669,13 +1680,12 @@ func (d *DIPAddr) Size() uintptr {
 
 // DIPRange is a datum for a range of IPAddrs.
 type DIPRange struct {
-  lower ipaddr.IPAddr
-  upper ipaddr.IPAddr
+	ipaddr.IPRange
 }
 
 // NewDIPRange is a helper routine to create a *DIPRange initialized from its arguments.
 func NewDIPRange(d DIPRange) *DIPRange {
-  return &d
+	return &d
 }
 
 // AsDIPRange attempts to retrieve a *DIPRange from an Expr, returning a *DIPRange and
@@ -1718,16 +1728,11 @@ func (d *DIPRange) Compare(ctx *EvalContext, other Datum) int {
     panic(makeUnsupportedComparisonMessage(d, other))
   }
 
-  lowerCmp := d.lower.Compare(&v.lower)
-  if lowerCmp != 0 {
-    return lowerCmp
-  }
-  return d.upper.Compare(&v.upper)
+  return d.IPRange.Compare(&v.IPRange)
 }
 
 func (d DIPRange) equal(other *DIPRange) bool {
-  return d.lower.Equal(&other.lower) &&
-    d.upper.Equal(&other.upper)
+  return d.IPRange.Equal(&other.IPRange)
 }
 
 func (d *DIPRange) Prev(_ *EvalContext) (Datum, bool) {
@@ -1775,15 +1780,7 @@ func (d *DIPRange) Format(ctx *FmtCtx) {
   if !bareStrings {
     ctx.WriteByte('\'')
   }
-  ctx.WriteString(d.lower.String())
-
-  if !bareStrings {
-    ctx.WriteString("\\-\\")
-  } else {
-    ctx.WriteByte('-')
-  }
-
-  ctx.WriteString(d.upper.String())
+  ctx.WriteString(d.IPRange.String())
   if !bareStrings {
     ctx.WriteByte('\'')
   }
@@ -1791,7 +1788,7 @@ func (d *DIPRange) Format(ctx *FmtCtx) {
 
 // Size implements the Datum interface.
 func (d *DIPRange) Size() uintptr {
-  log.Printf("JEB::DIPRange.Size() = %i", unsafe.Sizeof(*d))
+  log.Printf("JEB::DIPRange.Size() = %d", unsafe.Sizeof(*d))
   return unsafe.Sizeof(*d)
 }
 

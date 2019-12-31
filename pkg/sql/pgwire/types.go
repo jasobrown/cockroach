@@ -139,6 +139,9 @@ func (b *writeBuffer) writeTextDatum(
 	case *tree.DIPAddr:
 		b.writeLengthPrefixedString(v.IPAddr.String())
 
+	case *tree.DIPRange:
+		b.writeLengthPrefixedString(v.IPRange.String())
+
 	case *tree.DString:
 		b.writeLengthPrefixedString(string(*v))
 
@@ -403,6 +406,9 @@ func (b *writeBuffer) writeBinaryDatum(
 		} else {
 			b.setError(errors.Errorf("error encoding inet to pgBinary: %v", v.IPAddr))
 		}
+
+	case *tree.DIPRange:
+		b.setError(errors.AssertionFailedf("unsupported binary type for DIPRange %T", d))
 
 	case *tree.DString:
 		b.writeLengthPrefixedString(string(*v))

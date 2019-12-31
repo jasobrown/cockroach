@@ -134,6 +134,12 @@ func EncodeTableKey(b []byte, val tree.Datum, dir encoding.Direction) ([]byte, e
 			return encoding.EncodeBytesAscending(b, data), nil
 		}
 		return encoding.EncodeBytesDescending(b, data), nil
+	case *tree.DIPRange:
+		data := t.ToBuffer(nil)
+		if dir == encoding.Ascending {
+			return encoding.EncodeBytesAscending(b, data), nil
+		}
+		return encoding.EncodeBytesDescending(b, data), nil
 	case *tree.DTuple:
 		for _, datum := range t.D {
 			var err error
@@ -197,7 +203,7 @@ func SkipTableKey(valType *types.T, key []byte, dir IndexDescriptor_Direction) (
 		} else {
 			rkey, _, err = encoding.DecodeFloatDescending(key)
 		}
-	case types.BytesFamily, types.StringFamily, types.UuidFamily, types.INetFamily, types.CollatedStringFamily:
+	case types.BytesFamily, types.StringFamily, types.UuidFamily, types.INetFamily, types.IPRangeFamily, types.CollatedStringFamily:
 		if dir == IndexDescriptor_ASC {
 			rkey, _, err = encoding.DecodeBytesAscending(key, nil)
 		} else {
@@ -402,6 +408,19 @@ func DecodeTableKey(
 		var ipAddr ipaddr.IPAddr
 		_, err := ipAddr.FromBuffer(r)
 		return a.NewDIPAddr(tree.DIPAddr{IPAddr: ipAddr}), rkey, err
+	case types.IPRangeFamily:
+		var r []byte
+		if dir == encoding.Ascending {
+			rkey, r, err = encoding.DecodeBytesAscending(key, nil)
+		} else {
+			rkey, r, err = encoding.DecodeBytesDescending(key, nil)
+		}
+		if err != nil {
+			return nil, nil, err
+		}
+		var ipRange ipaddr.IPRange
+		_, err := ipRange.FromBuffer(r)
+		return a.NewDIPRange(tree.DIPRange{IPRange: ipRange}), rkey, err
 	case types.OidFamily:
 		var i int64
 		if dir == encoding.Ascending {
@@ -463,6 +482,8 @@ func EncodeTableValue(
 		return encoding.EncodeUUIDValue(appendTo, uint32(colID), t.UUID), nil
 	case *tree.DIPAddr:
 		return encoding.EncodeIPAddrValue(appendTo, uint32(colID), t.IPAddr), nil
+	case *tree.DIPRange:
+		return encoding.EncodeIPRangeValue(appendTo, uint32(colID), t.IPRange), nil
 	case *tree.DJSON:
 		encoded, err := json.EncodeJSON(scratch, t.JSON)
 		if err != nil {
@@ -596,6 +617,9 @@ func decodeUntaggedDatum(a *DatumAlloc, t *types.T, buf []byte) (tree.Datum, []b
 	case types.INetFamily:
 		b, data, err := encoding.DecodeUntaggedIPAddrValue(buf)
 		return a.NewDIPAddr(tree.DIPAddr{IPAddr: data}), b, err
+	case types.IPRangeFamily:
+		b, data, err := encoding.DecodeUntaggedIPRangeValue(buf)
+		return a.NewDIPRange(tree.DIPRange{IPRange: data}), b, err
 	case types.JsonFamily:
 		b, data, err := encoding.DecodeUntaggedBytesValue(buf)
 		if err != nil {
@@ -732,6 +756,12 @@ func MarshalColumnValue(col *ColumnDescriptor, val tree.Datum) (roachpb.Value, e
 		}
 	case types.INetFamily:
 		if v, ok := val.(*tree.DIPAddr); ok {
+			data := v.ToBuffer(nil)
+			r.SetBytes(data)
+			return r, nil
+		}
+	case types.IPRangeFamily:
+		if v, ok := val.(*tree.DIPRange); ok {
 			data := v.ToBuffer(nil)
 			r.SetBytes(data)
 			return r, nil
@@ -902,6 +932,17 @@ func UnmarshalColumnValue(a *DatumAlloc, typ *types.T, value roachpb.Value) (tre
 			return nil, err
 		}
 		return a.NewDIPAddr(tree.DIPAddr{IPAddr: ipAddr}), nil
+	case types.IPRangeFamily:
+		v, err := value.GetBytes()
+		if err != nil {
+			return nil, err
+		}
+		var ipRange ipaddr.IPRange
+		_, err = ipRange.FromBuffer(v)
+		if err != nil {
+			return nil, err
+		}
+		return a.NewDIPRange(tree.DIPRange{IPRange: ipRange}), nil
 	case types.OidFamily:
 		v, err := value.GetInt()
 		if err != nil {
@@ -1181,6 +1222,8 @@ func datumTypeToArrayElementEncodingType(t *types.T) (encoding.Type, error) {
 		return encoding.UUID, nil
 	case types.INetFamily:
 		return encoding.IPAddr, nil
+	case types.IPRangeFamily:
+		return encoding.IPRange, nil
 	default:
 		return 0, errors.Errorf("Don't know encoding type for %s", t)
 	}
@@ -1238,6 +1281,8 @@ func encodeArrayElement(b []byte, d tree.Datum) ([]byte, error) {
 		return encoding.EncodeUntaggedUUIDValue(b, t.UUID), nil
 	case *tree.DIPAddr:
 		return encoding.EncodeUntaggedIPAddrValue(b, t.IPAddr), nil
+	case *tree.DIPRange:
+		return encoding.EncodeUntaggedIPRangeValue(b, t.IPRange), nil
 	case *tree.DOid:
 		return encoding.EncodeUntaggedIntValue(b, int64(t.DInt)), nil
 	case *tree.DCollatedString:

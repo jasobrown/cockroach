@@ -794,6 +794,7 @@ func checkResultType(typ *types.T) error {
 	case types.JsonFamily:
 	case types.UuidFamily:
 	case types.INetFamily:
+	case types.IPRangeFamily:
 	case types.OidFamily:
 	case types.TupleFamily:
 	case types.ArrayFamily:

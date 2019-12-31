@@ -78,6 +78,8 @@ func parseStringAs(t *types.T, s string, ctx ParseTimeContext) (Datum, error) {
 			return nil, err
 		}
 		return ParseDIntervalWithTypeMetadata(s, itm)
+	case types.IPRangeFamily:
+		return ParseDIPRange(s)
 	case types.JsonFamily:
 		return ParseDJSON(s)
 	case types.OidFamily:
