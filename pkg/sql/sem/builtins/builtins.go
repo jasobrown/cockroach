@@ -186,12 +186,30 @@ var builtins = map[string]builtinDefinition{
 	"lower": makeBuiltin(tree.FunctionProperties{Category: categoryString},
 		stringOverload1(func(evalCtx *tree.EvalContext, s string) (tree.Datum, error) {
 			return tree.NewDString(strings.ToLower(s)), nil
-		}, types.String, "Converts all characters in `val` to their lower-case equivalents.")),
+		}, types.String, "Converts all characters in `val` to their lower-case equivalents."),
+		tree.Overload{
+			Types:      tree.ArgTypes{{"val", types.IPRange}},
+			ReturnType: tree.FixedReturnType(types.INet),
+			Fn: func(_ *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				dIPRange := tree.MustBeDIPRange(args[0])
+				return &tree.DIPAddr{IPAddr: dIPRange.Lower}, nil
+			},
+			Info: "Extracts the lower IP of the range.",
+		}),
 
 	"upper": makeBuiltin(tree.FunctionProperties{Category: categoryString},
 		stringOverload1(func(evalCtx *tree.EvalContext, s string) (tree.Datum, error) {
 			return tree.NewDString(strings.ToUpper(s)), nil
-		}, types.String, "Converts all characters in `val` to their to their upper-case equivalents.")),
+		}, types.String, "Converts all characters in `val` to their to their upper-case equivalents."),
+		tree.Overload{
+			Types:      tree.ArgTypes{{"val", types.IPRange}},
+			ReturnType: tree.FixedReturnType(types.INet),
+			Fn: func(_ *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				dIPRange := tree.MustBeDIPRange(args[0])
+				return &tree.DIPAddr{IPAddr: dIPRange.Upper}, nil
+			},
+			Info: "Extracts the upper IP of the range.",
+		}),
 
 	"substr":    substringImpls,
 	"substring": substringImpls,
@@ -426,6 +444,19 @@ var builtins = map[string]builtinDefinition{
 			Info: "Extracts the IP family of the value; 4 for IPv4, 6 for IPv6." +
 				"\n\nFor example, `family('::1')` returns `6`",
 		},
+		tree.Overload{
+			Types:      tree.ArgTypes{{"val", types.IPRange}},
+			ReturnType: tree.FixedReturnType(types.Int),
+			Fn: func(_ *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				dIPRange := tree.MustBeDIPRange(args[0])
+				if dIPRange.Lower.Family == ipaddr.IPv4family {
+					return tree.NewDInt(tree.DInt(4)), nil
+				}
+				return tree.NewDInt(tree.DInt(6)), nil
+			},
+			Info: "Extracts the IP family of the value; 4 for IPv4, 6 for IPv6." +
+				"\n\nFor example, `family('::1')` returns `6`",
+		},
 	),
 
 	"host": makeBuiltin(defProps(),
@@ -556,6 +587,20 @@ var builtins = map[string]builtinDefinition{
 			Info: "Test for subnet inclusion or equality, using only the network parts of the addresses. " +
 				"The host part of the addresses is ignored.",
 		},
+		// TODO(jeb) in a real implementation, this wouldn't be a copy-paste job, but would share common function with the iprange version
+		tree.Overload{
+			Types: tree.ArgTypes{
+				{"val", types.IPRange},
+				{"container", types.IPRange},
+			},
+			ReturnType: tree.FixedReturnType(types.Bool),
+			Fn: func(_ *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				ipRange := tree.MustBeDIPRange(args[0]).IPRange
+				other := tree.MustBeDIPRange(args[1]).IPRange
+				return tree.MakeDBool(tree.DBool(ipRange.ContainedByOrEquals(&other))), nil
+			},
+			Info: "Test a is contained in b or is equal to b.",
+		},
 	),
 
 	"inet_contains_or_equals": makeBuiltin(defProps(),
@@ -572,6 +617,52 @@ var builtins = map[string]builtinDefinition{
 			},
 			Info: "Test for subnet inclusion or equality, using only the network parts of the addresses. " +
 				"The host part of the addresses is ignored.",
+		},
+		// TODO(jeb) in a real implementation, this wouldn't be a copy-paste job, but would share common function with the iprange version
+		tree.Overload{
+			Types: tree.ArgTypes{
+				{"container", types.IPRange},
+				{"val", types.IPRange},
+			},
+			ReturnType: tree.FixedReturnType(types.Bool),
+			Fn: func(_ *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				ipRange := tree.MustBeDIPRange(args[0]).IPRange
+				other := tree.MustBeDIPRange(args[1]).IPRange
+				return tree.MakeDBool(tree.DBool(ipRange.ContainsOrEquals(&other))), nil
+			},
+			Info: "Test a contains b or is equal to b",
+		},
+	),
+
+	"iprange_contained_by_or_equals": makeBuiltin(defProps(),
+		tree.Overload{
+			Types: tree.ArgTypes{
+				{"val", types.IPRange},
+				{"container", types.IPRange},
+			},
+			ReturnType: tree.FixedReturnType(types.Bool),
+			Fn: func(_ *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				ipRange := tree.MustBeDIPRange(args[0]).IPRange
+				other := tree.MustBeDIPRange(args[1]).IPRange
+				return tree.MakeDBool(tree.DBool(ipRange.ContainedByOrEquals(&other))), nil
+			},
+			Info: "Test a is contained in b or is equal to b.",
+		},
+	),
+
+	"iprange_contains_or_equals": makeBuiltin(defProps(),
+		tree.Overload{
+			Types: tree.ArgTypes{
+				{"container", types.IPRange},
+				{"val", types.IPRange},
+			},
+			ReturnType: tree.FixedReturnType(types.Bool),
+			Fn: func(_ *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				ipRange := tree.MustBeDIPRange(args[0]).IPRange
+				other := tree.MustBeDIPRange(args[1]).IPRange
+				return tree.MakeDBool(tree.DBool(ipRange.ContainsOrEquals(&other))), nil
+			},
+			Info: "Test a contains b or is equal to b",
 		},
 	),
 
@@ -614,6 +705,37 @@ var builtins = map[string]builtinDefinition{
 		},
 	),
 
+	// The following functions are part of the IPRANGE address functions.
+	// They were adapted from the PG extenstion 'ip4r' (https://github.com/RhodiumToad/ip4r)
+	// This includes overloads as found elsewhere (typically with INet builtins), as well as:
+	// - is_cidr
+	// - cidr_split
+
+	"is_cidr": makeBuiltin(defProps(),
+		tree.Overload{
+			Types:      tree.ArgTypes{{"val", types.IPRange}},
+			ReturnType: tree.FixedReturnType(types.Bool),
+			Fn: func(_ *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				dIPRange := tree.MustBeDIPRange(args[0])
+				return tree.MakeDBool(tree.DBool(dIPRange.IsCidr())), nil
+			},
+			Info: "Checks if the value is a valid CIDR range.",
+		},
+	),
+/*
+	"cidr_split": makeBuiltin(defProps(),
+		tree.Overload{
+			Types:      tree.ArgTypes{{"val", types.IPRange}},
+			ReturnType: tree.FixedReturnType(types.Bool),
+			Fn: func(_ *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				dIPRange := tree.MustBeDIPRange(args[0])
+				// TODO(jeb): impl me
+				//return tree.MakeDBool(tree.DBool(dIPRange.IsCidr())), nil
+			},
+			Info: "splits the range up into separate CIDR blocks, and returns each one as a separate row.",
+		},
+	),
+*/
 	"split_part": makeBuiltin(defProps(),
 		tree.Overload{
 			Types: tree.ArgTypes{

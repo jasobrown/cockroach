@@ -535,8 +535,7 @@ func newNameFromStr(s string) *tree.Name {
 %token <str> INET_CONTAINS_OR_EQUALS INDEX INDEXES INJECT INTERLEAVE INITIALLY
 %token <str> INNER INSERT INT INT2VECTOR INT2 INT4 INT8 INT64 INTEGER
 %token <str> INTERSECT INTERVAL INTO INVERTED
-%token <str> IPRANGE
-// TODO(jeb) may need IPRANGE_CONTAINED_BY_OR_EQUALS and IPRANGE_CONTAINS_OR_EQUALS
+%token <str> IPRANGE IPRANGE_CONTAINED_BY_OR_EQUALS IPRANGE_CONTAINS_OR_EQUALS
 %token <str> IS ISERROR ISNULL ISOLATION
 
 %token <str> JOB JOBS JOIN JSON JSONB JSON_SOME_EXISTS JSON_ALL_EXISTS
@@ -1067,7 +1066,7 @@ func newNameFromStr(s string) *tree.Name {
 %left      '|'
 %left      '#'
 %left      '&'
-%left      LSHIFT RSHIFT INET_CONTAINS_OR_EQUALS INET_CONTAINED_BY_OR_EQUALS AND_AND
+%left      LSHIFT RSHIFT INET_CONTAINS_OR_EQUALS INET_CONTAINED_BY_OR_EQUALS AND_AND IPRANGE_CONTAINED_BY_OR_EQUALS IPRANGE_CONTAINS_OR_EQUALS
 %left      '+' '-'
 %left      '*' '/' FLOORDIV '%'
 %left      '^'
@@ -7712,6 +7711,14 @@ a_expr:
 | a_expr INET_CONTAINS_OR_EQUALS a_expr
   {
     $$.val = &tree.FuncExpr{Func: tree.WrapFunction("inet_contains_or_equals"), Exprs: tree.Exprs{$1.expr(), $3.expr()}}
+  }
+| a_expr IPRANGE_CONTAINED_BY_OR_EQUALS a_expr
+  {
+    $$.val = &tree.FuncExpr{Func: tree.WrapFunction("iprange_contained_by_or_equals"), Exprs: tree.Exprs{$1.expr(), $3.expr()}}
+  }
+| a_expr IPRANGE_CONTAINS_OR_EQUALS a_expr
+  {
+    $$.val = &tree.FuncExpr{Func: tree.WrapFunction("iprange_contains_or_equals"), Exprs: tree.Exprs{$1.expr(), $3.expr()}}
   }
 | a_expr LESS_EQUALS a_expr
   {

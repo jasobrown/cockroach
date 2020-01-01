@@ -3519,15 +3519,14 @@ func PerformCast(ctx *EvalContext, d Datum, t *types.T) (Datum, error) {
 		}
 
   case types.IPRangeFamily:
-    // TODO(jeb) fill me in
-    //switch t := d.(type) {
-    //case *DString:
-    //  return ParseDIPRangeFromINetString(string(*t))
-    //case *DCollatedString:
-    //  return ParseDIPRangeFromINetString(t.Contents)
-    //case *DIPAddr:
-      return d, nil
-    //}
+   switch t := d.(type) {
+    case *DString:
+     return ParseDIPRange(string(*t))
+    case *DCollatedString:
+     return ParseDIPRange(t.Contents)
+    case *DIPRange:
+     return d, nil
+    }
 
 	case types.DateFamily:
 		switch d := d.(type) {

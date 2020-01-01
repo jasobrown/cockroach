@@ -266,9 +266,17 @@
 </span></td></tr>
 <tr><td><a name="inet_contained_by_or_equals"></a><code>inet_contained_by_or_equals(val: <a href="inet.html">inet</a>, container: <a href="inet.html">inet</a>) &rarr; <a href="bool.html">bool</a></code></td><td><span class="funcdesc"><p>Test for subnet inclusion or equality, using only the network parts of the addresses. The host part of the addresses is ignored.</p>
 </span></td></tr>
+<tr><td><a name="inet_contained_by_or_equals"></a><code>inet_contained_by_or_equals(val: iprange, container: iprange) &rarr; <a href="bool.html">bool</a></code></td><td><span class="funcdesc"><p>Test a is contained in b or is equal to b.</p>
+</span></td></tr>
 <tr><td><a name="inet_contains_or_equals"></a><code>inet_contains_or_equals(container: <a href="inet.html">inet</a>, val: <a href="inet.html">inet</a>) &rarr; <a href="bool.html">bool</a></code></td><td><span class="funcdesc"><p>Test for subnet inclusion or equality, using only the network parts of the addresses. The host part of the addresses is ignored.</p>
 </span></td></tr>
+<tr><td><a name="inet_contains_or_equals"></a><code>inet_contains_or_equals(container: iprange, val: iprange) &rarr; <a href="bool.html">bool</a></code></td><td><span class="funcdesc"><p>Test a contains b or is equal to b</p>
+</span></td></tr>
 <tr><td><a name="inet_same_family"></a><code>inet_same_family(val: <a href="inet.html">inet</a>, val: <a href="inet.html">inet</a>) &rarr; <a href="bool.html">bool</a></code></td><td><span class="funcdesc"><p>Checks if two IP addresses are of the same IP family.</p>
+</span></td></tr>
+<tr><td><a name="iprange_contained_by_or_equals"></a><code>iprange_contained_by_or_equals(val: iprange, container: iprange) &rarr; <a href="bool.html">bool</a></code></td><td><span class="funcdesc"><p>Test a is contained in b or is equal to b.</p>
+</span></td></tr>
+<tr><td><a name="iprange_contains_or_equals"></a><code>iprange_contains_or_equals(container: iprange, val: iprange) &rarr; <a href="bool.html">bool</a></code></td><td><span class="funcdesc"><p>Test a contains b or is equal to b</p>
 </span></td></tr>
 <tr><td><a name="like_escape"></a><code>like_escape(unescaped: <a href="string.html">string</a>, pattern: <a href="string.html">string</a>, escape: <a href="string.html">string</a>) &rarr; <a href="bool.html">bool</a></code></td><td><span class="funcdesc"><p>Matches <code>unescaped</code> with <code>pattern</code> using ‘escape’ as an escape token.</p>
 </span></td></tr>
@@ -472,6 +480,9 @@ has no relationship with the commit order of concurrent transactions.</p>
 <tr><td><a name="family"></a><code>family(val: <a href="inet.html">inet</a>) &rarr; <a href="int.html">int</a></code></td><td><span class="funcdesc"><p>Extracts the IP family of the value; 4 for IPv4, 6 for IPv6.</p>
 <p>For example, <code>family('::1')</code> returns <code>6</code></p>
 </span></td></tr>
+<tr><td><a name="family"></a><code>family(val: iprange) &rarr; <a href="int.html">int</a></code></td><td><span class="funcdesc"><p>Extracts the IP family of the value; 4 for IPv4, 6 for IPv6.</p>
+<p>For example, <code>family('::1')</code> returns <code>6</code></p>
+</span></td></tr>
 <tr><td><a name="host"></a><code>host(val: <a href="inet.html">inet</a>) &rarr; <a href="string.html">string</a></code></td><td><span class="funcdesc"><p>Extracts the address part of the combined address/prefixlen value as text.</p>
 <p>For example, <code>host('192.168.1.2/16')</code> returns <code>'192.168.1.2'</code></p>
 </span></td></tr>
@@ -488,6 +499,15 @@ has no relationship with the commit order of concurrent transactions.</p>
 <p>For example, <code>set_masklen('192.168.1.2', 16)</code> returns <code>'192.168.1.2/16'</code>.</p>
 </span></td></tr>
 <tr><td><a name="text"></a><code>text(val: <a href="inet.html">inet</a>) &rarr; <a href="string.html">string</a></code></td><td><span class="funcdesc"><p>Converts the IP address and prefix length to text.</p>
+</span></td></tr></tbody>
+</table>
+
+### IPRANGE functions
+
+<table>
+<thead><tr><th>Function &rarr; Returns</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><a name="is_cidr"></a><code>is_cidr(val: iprange) &rarr; <a href="bool.html">bool</a></code></td><td><span class="funcdesc"><p>Checks if the value is a valid CIDR range.</p>
 </span></td></tr></tbody>
 </table>
 
@@ -824,6 +844,8 @@ has no relationship with the commit order of concurrent transactions.</p>
 </span></td></tr>
 <tr><td><a name="lower"></a><code>lower(val: <a href="string.html">string</a>) &rarr; <a href="string.html">string</a></code></td><td><span class="funcdesc"><p>Converts all characters in <code>val</code> to their lower-case equivalents.</p>
 </span></td></tr>
+<tr><td><a name="lower"></a><code>lower(val: iprange) &rarr; <a href="inet.html">inet</a></code></td><td><span class="funcdesc"><p>Extracts the lower IP of the range.</p>
+</span></td></tr>
 <tr><td><a name="lpad"></a><code>lpad(string: <a href="string.html">string</a>, length: <a href="int.html">int</a>) &rarr; <a href="string.html">string</a></code></td><td><span class="funcdesc"><p>Pads <code>string</code> to <code>length</code> by adding ’ ’ to the left of <code>string</code>.If <code>string</code> is longer than <code>length</code> it is truncated.</p>
 </span></td></tr>
 <tr><td><a name="lpad"></a><code>lpad(string: <a href="string.html">string</a>, length: <a href="int.html">int</a>, fill: <a href="string.html">string</a>) &rarr; <a href="string.html">string</a></code></td><td><span class="funcdesc"><p>Pads <code>string</code> by adding <code>fill</code> to the left of <code>string</code> to make it <code>length</code>. If <code>string</code> is longer than <code>length</code> it is truncated.</p>
@@ -1002,6 +1024,8 @@ has no relationship with the commit order of concurrent transactions.</p>
 <p>For example, <code>translate('doggie', 'dog', '123');</code> returns <code>1233ie</code>.</p>
 </span></td></tr>
 <tr><td><a name="upper"></a><code>upper(val: <a href="string.html">string</a>) &rarr; <a href="string.html">string</a></code></td><td><span class="funcdesc"><p>Converts all characters in <code>val</code> to their to their upper-case equivalents.</p>
+</span></td></tr>
+<tr><td><a name="upper"></a><code>upper(val: iprange) &rarr; <a href="inet.html">inet</a></code></td><td><span class="funcdesc"><p>Extracts the upper IP of the range.</p>
 </span></td></tr></tbody>
 </table>
 
