@@ -92,6 +92,9 @@ func FormatColumnForDisplay(
 	} else {
 		f.WriteString(" NOT NULL")
 	}
+	if desc.Hidden {
+		f.WriteString(" NOT VISIBLE")
+	}
 	if desc.DefaultExpr != nil {
 		f.WriteString(" DEFAULT ")
 		defExpr, err := FormatExprForDisplay(ctx, tbl, *desc.DefaultExpr, semaCtx)

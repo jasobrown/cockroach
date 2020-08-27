@@ -385,7 +385,11 @@ func addResultColumns(
 	resultColumns colinfo.ResultColumns,
 ) error {
 	for _, colRes := range resultColumns {
-		columnTableDef := tree.ColumnTableDef{Name: tree.Name(colRes.Name), Type: colRes.Typ}
+		columnTableDef := tree.ColumnTableDef{
+			Name: tree.Name(colRes.Name),
+			Type: colRes.Typ,
+			Hidden: colRes.Hidden,
+		}
 		// The new types in the CREATE VIEW column specs never use
 		// SERIAL so we need not process SERIAL types here.
 		col, _, _, err := tabledesc.MakeColumnDefDescs(ctx, &columnTableDef, semaCtx, evalCtx)

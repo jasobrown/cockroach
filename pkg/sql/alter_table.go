@@ -950,7 +950,7 @@ func applyColumnMutation(
 			if constraint := tableDesc.Mutations[i].GetConstraint(); constraint != nil &&
 				constraint.ConstraintType == descpb.ConstraintToUpdate_NOT_NULL &&
 				constraint.NotNullColumn == col.ID {
-				if tableDesc.Mutations[i].Direction == descpb.DescriptorMutation_ADD {
+				if tableDesc.Mutations[i].Direction == descpb.DescriptorMutation_AlterTableDropNotNullADD {
 					return pgerror.Newf(pgcode.ObjectNotInPrerequisiteState,
 						"constraint in the middle of being added, try again later")
 				}
@@ -980,7 +980,11 @@ func applyColumnMutation(
 				"column %q is not a computed column", col.Name)
 		}
 		col.ComputeExpr = nil
+
+	case *tree.AlterTableSetHidden:
+		col.Hidden = t.Hidden
 	}
+
 	return nil
 }
 

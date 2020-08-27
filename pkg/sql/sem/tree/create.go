@@ -309,6 +309,7 @@ type ColumnTableDef struct {
 		Create      bool
 		IfNotExists bool
 	}
+	Hidden bool
 }
 
 // ColumnTableDefCheckExpr represents a check constraint on a column definition
@@ -431,6 +432,8 @@ func NewColumnTableDef(
 			d.Family.Name = t.Family
 			d.Family.Create = t.Create
 			d.Family.IfNotExists = t.IfNotExists
+		case *HiddenConstraint:
+			d.Hidden = true
 		default:
 			return nil, errors.AssertionFailedf("unexpected column qualification: %T", c)
 		}
@@ -547,6 +550,9 @@ func (node *ColumnTableDef) Format(ctx *FmtCtx) {
 			ctx.FormatNode(&node.Family.Name)
 		}
 	}
+	if node.Hidden {
+		ctx.WriteString(" NOT VISIBLE")
+	}
 }
 
 func (node *ColumnTableDef) columnTypeString() string {
@@ -591,6 +597,7 @@ func (*ColumnCheckConstraint) columnQualification()      {}
 func (*ColumnComputedDef) columnQualification()          {}
 func (*ColumnFKConstraint) columnQualification()         {}
 func (*ColumnFamilyConstraint) columnQualification()     {}
+func (HiddenConstraint) columnQualification()            {}
 
 // ColumnCollation represents a COLLATE clause for a column.
 type ColumnCollation string
@@ -643,6 +650,9 @@ type ColumnFamilyConstraint struct {
 	Create      bool
 	IfNotExists bool
 }
+
+// HiddenConstraint represents NOT VISIBLE on a column.
+type HiddenConstraint struct {}
 
 // IndexTableDef represents an index definition within a CREATE TABLE
 // statement.

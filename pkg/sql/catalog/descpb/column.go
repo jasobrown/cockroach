@@ -82,6 +82,9 @@ func (desc *ColumnDescriptor) SQLStringNotHumanReadable() string {
 	} else {
 		f.WriteString(" NOT NULL")
 	}
+	if desc.Hidden {
+		f.WriteString(" NOT VISIBLE")
+	}
 	if desc.DefaultExpr != nil {
 		f.WriteString(" DEFAULT ")
 		f.WriteString(*desc.DefaultExpr)

@@ -75,6 +75,7 @@ func (*AlterTableValidateConstraint) alterTableCmd() {}
 func (*AlterTablePartitionBy) alterTableCmd()        {}
 func (*AlterTableInjectStats) alterTableCmd()        {}
 func (*AlterTableOwner) alterTableCmd()              {}
+func (*AlterTableSetHidden) alterTableCmd()          {}
 
 var _ AlterTableCmd = &AlterTableAddColumn{}
 var _ AlterTableCmd = &AlterTableAddConstraint{}
@@ -92,6 +93,7 @@ var _ AlterTableCmd = &AlterTableValidateConstraint{}
 var _ AlterTableCmd = &AlterTablePartitionBy{}
 var _ AlterTableCmd = &AlterTableInjectStats{}
 var _ AlterTableCmd = &AlterTableOwner{}
+var _ AlterTableCmd = &AlterTableSetHidden{}
 
 // ColumnMutationCmd is the subset of AlterTableCmds that modify an
 // existing column.
@@ -592,4 +594,37 @@ func (node *AlterTableOwner) TelemetryCounter() telemetry.Counter {
 func (node *AlterTableOwner) Format(ctx *FmtCtx) {
 	ctx.WriteString(" OWNER TO ")
 	ctx.FormatNameP(&node.Owner)
+}
+
+// AlterTableSetNotVisible represents an ALTER COLUMN SET NOT VISIBLE
+type AlterTableSetHidden struct {
+	Column Name
+	Hidden bool
+}
+
+// GetColumn implements the ColumnMutationCmd interface.
+func (node *AlterTableSetHidden) GetColumn() Name {
+	return node.Column
+}
+
+// TelemetryCounter implements the AlterTableCmd interface.
+func (node *AlterTableSetHidden) TelemetryCounter() telemetry.Counter {
+	var extra string
+	if node.Hidden {
+		extra = "set_not_visible"
+	} else {
+		extra = "set_visible"
+	}
+	return sqltelemetry.SchemaChangeAlterCounterWithExtra("table", extra)
+}
+
+// Format implements the NodeFormatter interface.
+func (node *AlterTableSetHidden) Format(ctx *FmtCtx) {
+	ctx.WriteString(" ALTER COLUMN ")
+	ctx.FormatNode(&node.Column)
+	if node.Hidden {
+		ctx.WriteString(" SET NOT VISIBLE")
+	} else {
+		ctx.WriteString(" SET VISIBLE")
+	}
 }

@@ -1242,7 +1242,11 @@ func newTableDescIfAs(
 		for _, colRes := range resultColumns {
 			var d *tree.ColumnTableDef
 			var ok bool
-			var tableDef tree.TableDef = &tree.ColumnTableDef{Name: tree.Name(colRes.Name), Type: colRes.Typ}
+			var tableDef tree.TableDef = &tree.ColumnTableDef{
+				Name: tree.Name(colRes.Name),
+				Type: colRes.Typ,
+				Hidden: colRes.Hidden,
+			}
 			if d, ok = tableDef.(*tree.ColumnTableDef); !ok {
 				return nil, errors.Errorf("failed to cast type to ColumnTableDef\n")
 			}
@@ -1999,6 +2003,8 @@ func replaceLikeTableOpts(n *tree.CreateTable, params runParams) (tree.TableDefs
 		// Add all columns. Columns are always added.
 		for i := range td.Columns {
 			c := &td.Columns[i]
+			// TODO(jasobrown) ask about this as I'm not quite sure it's what we need
+			// when supporting user-defined hidden columns
 			if c.Hidden {
 				// Hidden columns automatically get added by the system; we don't need
 				// to add them ourselves here.
@@ -2007,6 +2013,7 @@ func replaceLikeTableOpts(n *tree.CreateTable, params runParams) (tree.TableDefs
 			def := tree.ColumnTableDef{
 				Name: tree.Name(c.Name),
 				Type: c.Type,
+				Hidden: c.Hidden,
 			}
 			if c.Nullable {
 				def.Nullable.Nullability = tree.Null

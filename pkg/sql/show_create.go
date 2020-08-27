@@ -83,14 +83,12 @@ func ShowCreateTable(
 	f.FormatNode(tn)
 	f.WriteString(" (")
 	primaryKeyIsOnVisibleColumn := false
-	visibleCols := desc.VisibleColumns()
-	for i := range visibleCols {
-		col := &visibleCols[i]
+	for i, col := range desc.TableDesc().Columns {
 		if i != 0 {
 			f.WriteString(",")
 		}
 		f.WriteString("\n\t")
-		colstr, err := schemaexpr.FormatColumnForDisplay(ctx, desc, col, &p.RunParams(ctx).p.semaCtx)
+		colstr, err := schemaexpr.FormatColumnForDisplay(ctx, desc, &col, &p.RunParams(ctx).p.semaCtx)
 		if err != nil {
 			return "", err
 		}
