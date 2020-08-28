@@ -1784,12 +1784,12 @@ alter_table_cmd:
     $$.val = &tree.AlterTableSetNotNull{Column: tree.Name($3)}
   }
   // ALTER TABLE <name> ALTER [COLUMN] <colname> SET NOT VISIBLE
-|
+| ALTER opt_column column_name SET NOT VISIBLE
   {
  	  $$.val = &tree.AlterTableSetHidden{Column: tree.Name($3), Hidden: true}
   }
   // ALTER TABLE <name> ALTER [COLUMN] <colname> SET VISIBLE
-|
+| ALTER opt_column column_name SET VISIBLE
   {
    	$$.val = &tree.AlterTableSetHidden{Column: tree.Name($3), Hidden: false}
   }
@@ -11575,6 +11575,7 @@ unreserved_keyword:
 | VARYING
 | VIEW
 | VIEWACTIVITY
+| VISIBLE
 | WITHIN
 | WITHOUT
 | WRITE

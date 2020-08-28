@@ -1015,6 +1015,7 @@ unreserved_keyword ::=
 	| 'VARYING'
 	| 'VIEW'
 	| 'VIEWACTIVITY'
+	| 'VISIBLE'
 	| 'WITHIN'
 	| 'WITHOUT'
 	| 'WRITE'
@@ -2269,6 +2270,8 @@ alter_table_cmd ::=
 	| 'ALTER' opt_column column_name 'DROP' 'NOT' 'NULL'
 	| 'ALTER' opt_column column_name 'DROP' 'STORED'
 	| 'ALTER' opt_column column_name 'SET' 'NOT' 'NULL'
+	| 'ALTER' opt_column column_name 'SET' 'NOT' 'VISIBLE'
+	| 'ALTER' opt_column column_name 'SET' 'VISIBLE'
 	| 'DROP' opt_column 'IF' 'EXISTS' column_name opt_drop_behavior
 	| 'DROP' opt_column column_name opt_drop_behavior
 	| 'ALTER' opt_column column_name opt_set_data 'TYPE' typename opt_collate opt_alter_column_using
@@ -2645,6 +2648,7 @@ col_qualification_elem ::=
 	| 'DEFAULT' b_expr
 	| 'REFERENCES' table_name opt_name_parens key_match reference_actions
 	| generated_as '(' a_expr ')' 'STORED'
+	| 'NOT' 'VISIBLE'
 
 family_name ::=
 	name

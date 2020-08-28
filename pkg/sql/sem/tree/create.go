@@ -432,7 +432,7 @@ func NewColumnTableDef(
 			d.Family.Name = t.Family
 			d.Family.Create = t.Create
 			d.Family.IfNotExists = t.IfNotExists
-		case *HiddenConstraint:
+		case HiddenConstraint:
 			d.Hidden = true
 		default:
 			return nil, errors.AssertionFailedf("unexpected column qualification: %T", c)

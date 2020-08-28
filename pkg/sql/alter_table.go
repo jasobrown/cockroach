@@ -950,7 +950,7 @@ func applyColumnMutation(
 			if constraint := tableDesc.Mutations[i].GetConstraint(); constraint != nil &&
 				constraint.ConstraintType == descpb.ConstraintToUpdate_NOT_NULL &&
 				constraint.NotNullColumn == col.ID {
-				if tableDesc.Mutations[i].Direction == descpb.DescriptorMutation_AlterTableDropNotNullADD {
+				if tableDesc.Mutations[i].Direction == descpb.DescriptorMutation_ADD {
 					return pgerror.Newf(pgcode.ObjectNotInPrerequisiteState,
 						"constraint in the middle of being added, try again later")
 				}
