@@ -1140,8 +1140,8 @@ func (c *cliState) doCheckStatement(startState, contState, execState cliStateEnu
 			fmt.Println(helpText)
 		}
 
-		_ = c.invalidSyntax(0, "JEB::statement ignored: %v",
-			&formattedError{err: err, showSeverity: false, verbose: true})
+		_ = c.invalidSyntax(0, "statement ignored: %v",
+			&formattedError{err: err, showSeverity: false, verbose: false})
 
 		// Stop here if exiterr is set.
 		if c.errExit {
